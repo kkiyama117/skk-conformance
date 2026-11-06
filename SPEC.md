@@ -62,7 +62,7 @@ mode = "hiragana"
 | Key | Type | Required | Meaning |
 |---|---|---|---|
 | `title` | string | yes | Row label in the pass table. |
-| `ref` | string | yes | Where in the ddskk manual (17.1 text in `docs/05_basic.rst` and `docs/06_apps.rst` of the ddskk source) the behavior is described. |
+| `ref` | string | yes | Where in the ddskk manual the behavior is described. The manual is the text in `docs/05_basic.rst` and `docs/06_apps.rst` of the ddskk 17.2 source tree; its pages still carry the label 17.1. |
 
 ### 3.2 `[[case]]`
 
@@ -141,7 +141,7 @@ While SKK abbrev mode is on (`/`), the input mode is the one that was active bef
 - The first line is the coding line above, exactly.
 - The okuri-ari section is sorted in descending order and the okuri-nasi section in ascending order, comparing midashi by Unicode code point, so that ddskk's binary search (`skk-large-jisyo`) works.
 - Every line ends with `\n`, including the last.
-- No annotations, no Lisp candidates, and no okurigana blocks in version 1.
+- No annotations (`;`), no Lisp candidates (a candidate starting with `(`), and no okurigana blocks (`[`, `]`) in version 1.
 
 The initial user dictionary of a case without `user_dict` is exactly these two lines:
 
@@ -238,7 +238,7 @@ The runner and validator are cards (`TASKS.md`). They follow these rules:
 
 ## 8. The gate
 
-`make check` validates every case file and dictionary against sections 3 and 4, and runs the runner's own tests. It does not need the network or a container. Engine runs that need a container or a long time are separate `make` targets, named in `TASKS.md`.
+`make check` validates the syntax of every case file and dictionary against sections 3 and 4, with the checks that card C1 lists, and runs the runner's own tests. Two authoring rules cannot be checked mechanically and are the lead's to keep: no `preedit` check on a step that ends inside registration (3.5), and no `mode` check on a step that ends in SKK abbrev mode (3.6). It does not need the network or a container. Engine runs that need a container or a long time are separate `make` targets, named in `TASKS.md`.
 
 ## 9. Versioning
 

@@ -65,7 +65,7 @@ text = "a b"
 mode = "ascii"
 
 [[case]]
-id = "mode.L-to-zenkaku-latin"
+id = "mode.shift-l-to-zenkaku-latin"
 dicts = ["basic"]
 [[case.step]]
 keys = "L a B c"
@@ -98,7 +98,7 @@ text = "a"
 mode = "ascii"
 
 [[case]]
-id = "mode.katakana-L-to-zenkaku-latin"
+id = "mode.katakana-shift-l-to-zenkaku-latin"
 dicts = ["basic"]
 [[case.step]]
 keys = "q L a"

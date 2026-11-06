@@ -27,7 +27,7 @@ text = "あ"
 preedit = "▽か"
 
 [[case]]
-id = "preedit.Q-start"
+id = "preedit.shift-q-start"
 dicts = ["basic"]
 [[case.step]]
 keys = "Q k a n j i"
@@ -35,7 +35,7 @@ text = ""
 preedit = "▽かんじ"
 
 [[case]]
-id = "preedit.Q-digits"
+id = "preedit.shift-q-digits"
 dicts = ["basic"]
 [[case.step]]
 keys = "Q 7 g a t u"

@@ -1,5 +1,7 @@
 .PHONY: check validate test
 
+export PYTHONDONTWRITEBYTECODE := 1
+
 check: validate test
 
 validate:

@@ -21,7 +21,7 @@ preedit = ""
 mode = "katakana"
 
 [[case]]
-id = "toggle.after-Q"
+id = "toggle.after-shift-q"
 dicts = ["basic"]
 [[case.step]]
 keys = "Q k a n a q"
