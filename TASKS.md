@@ -306,3 +306,51 @@ Each test writes its own case files, dictionaries, engines file, and fake script
 Must fail without: the comparison of observations → `test_pass_and_fail_counts`; the restart after a timeout → `test_timeout_restarts_adapter`; the fresh user dictionary per case → `test_user_dict_is_fresh_per_case`.
 
 - Done: `make check` exits 0.
+
+## C9. Pull-request and main-branch CI
+
+- Needs: C1's committed implementation. The validator and its tests must be present before this card runs. C2 and the engine adapters are not needed.
+- Spec: `SPEC.md` section 8; `Makefile`; `../CLAUDE.md` sections GitHub and merge criteria; issue https://github.com/kkiyama117/kskk/issues/4.
+- Files: `.github/workflows/check.yml` only. The worker may create the missing `.github/workflows/` directories. No Python code, dependency files, Makefile changes, or test fixtures belong to this card.
+- The C9 number leaves C3-C8 available for the planned engine adapters. This card is a draft until its own ambiguity review and dispatch approval.
+
+### Workflow contract
+
+Write a YAML workflow named `Conformance check`. Its only events are `pull_request` without branch, path, or activity filters, and `push` restricted to the branch `main`. Do not use `pull_request_target`, a schedule, or `workflow_run`. Its only job has id `check`, name `make check`, `runs-on: ubuntu-24.04`, and `timeout-minutes: 10`. Do not add a matrix, a container, services, job conditions, or `continue-on-error`.
+
+Set top-level permissions to exactly `contents: read`, with no job-level override. The job has these four steps, in this order:
+
+1. `Checkout`. Use `actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1`, with an end-of-line comment `v7.0.1`. Set `persist-credentials: false` and `fetch-depth: 1`. Set `ref` to the expression `${{ github.event.pull_request.head.sha || github.sha }}`: a PR tests its head commit, while a push tests the pushed commit. Do not add a token, SSH key, submodules, or another repository.
+2. `Set up Python`. Use `actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0`, with an end-of-line comment `v7.1.0`. Set `python-version: '3.15.2'`, `architecture: 'x64'`, and `allow-prereleases: false`. Do not add a package cache, mirror, or token. This action supplies the interpreter through its tool cache or Python distribution download; do not rely on the runner's system Python and do not fall back to another Python version.
+3. `Python version`. Run exactly `python3 --version` so the native CI log identifies the interpreter.
+4. `Run gate`. Run exactly `make check` from the repository root. Do not replace it with selected tests, suppress its exit code, or allow failure. The Makefile already sets `PYTHONDONTWRITEBYTECODE=1`.
+
+The Python version and runner/action choices above come from the manager's CI evidence supplied to the lead. Ubuntu 24.04 has a listed x64 distribution of Python 3.15.2. The explicit runner label avoids changes in the meaning of ubuntu-latest. Keep both full action SHAs, not mutable version tags.
+
+Do not add pip or apt installation, external engine runs, containers, real dictionaries, secrets, publication, uploads, or deployment. Network access used by the checkout and interpreter-setup actions is distinct from the offline `make check` gate. The gate itself needs no network or credentials.
+
+### Verification
+
+The worker runs the full `make check` locally and reports its exit code and last 20 lines. Do not start a worker or contact GitHub from a unittest. No new unittest is requested: this card connects the existing public gate to the native Actions events, and does not add Python logic. A unit test that compares a YAML file with a second copy of itself would not test that integration.
+
+The following are separate acceptance checks by the lead or manager, not new Python test function names. Inspect the workflow artifact for the static checks. Native Actions checks require the manager's actual run and cannot be claimed from a local gate or a worker report.
+
+| Acceptance check | Assert and evidence |
+|---|---|
+| `ci_events` | The workflow's event mapping is exactly unfiltered `pull_request` plus `push` with `branches: [main]`. |
+| `ci_runner` | The check job uses `ubuntu-24.04`, x64 Python, and a 10-minute timeout. |
+| `ci_action_pins` | Both uses values contain exactly the full SHAs specified above, with the stated version comments. |
+| `ci_readonly_token` | Workflow permissions are exactly contents read and there is no job-level override. |
+| `ci_no_persisted_credentials` | Checkout explicitly sets persist-credentials false and adds no credential input. |
+| `ci_pr_head` | The checkout ref is the expression above; on the C9 pull request, the manager records the tested head SHA from the native run. |
+| `ci_python_version` | The native Python version step prints `Python 3.15.2`. A YAML field alone does not prove the installed version. |
+| `ci_pr_gate` | On a pull request head, the native Run gate step runs the full make check and succeeds. Record the run URL and commit. |
+| `ci_main_push_gate` | After merge to main, the native push run executes the same check job and full gate. Record the run URL and commit before marking C9 done. |
+
+Must fail without: the explicit read-only permissions declaration → `ci_readonly_token`.
+
+Must fail without: disabling persisted checkout credentials → `ci_no_persisted_credentials`.
+
+These two guard-removal checks are assertions on the workflow artifact, not unittest runs. The lead removes each declaration in turn, confirms that its acceptance assertion no longer holds, and restores the file exactly before any native CI run. Never run a deliberately weakened workflow on GitHub. Report these checks separately from test counts.
+
+- Done: local `make check` exits 0; the artifact checks hold; the manager confirms the native PR gate on the intended head; security review and manager review precede the PR. The main-push check and inclusion in origin/main are required before Status: done. Do not push, open a PR, merge, or mark done as a worker.
