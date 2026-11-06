@@ -35,7 +35,7 @@ A yes-or-no confirmation (ddskk asks one before `X` purges a word) is answered "
 
 ## 3. Case files
 
-A case file is TOML (v1.0), UTF-8, in `cases/`. Its name is `<NN>-<group>.toml`, where `NN` is two digits that order the groups in the pass table. The file has one top-level table and an array of cases:
+A case file is TOML (v1.0), UTF-8 without BOM, in `cases/`. Its name is `<NN>-<group>.toml`, where `NN` is two digits that order the groups in the pass table. The file has one top-level table and an array of cases:
 
 ```toml
 [group]
@@ -74,7 +74,7 @@ mode = "hiragana"
 | `note` | string | no | Free text for the reader. The runner ignores it. |
 | `step` | array of tables | yes, at least one | Section 3.3. |
 
-No other keys are allowed in a case.
+No other keys are allowed in a case. Each dictionary name in `dicts` and `user_dict` must match `^[a-z0-9][a-z0-9-]*$`. It names a regular file directly inside `dict/`; its resolved path must also remain directly inside the resolved dictionary directory. Reject an invalid name before constructing or checking its path. Never open a dictionary outside that directory through a case's name.
 
 ### 3.3 `[[case.step]]`
 

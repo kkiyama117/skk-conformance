@@ -7,14 +7,14 @@ Common rules for every card in this file:
 - Python code uses the standard library only (Python 3.15 is installed; `tomllib` and `json` are in it). No third-party packages.
 - Tests use `unittest`, live in `runner/test_<module>.py`, and are run by `make check` (`python3 -m unittest discover -s runner -t . -p 'test_*.py'`, with `PYTHONDONTWRITEBYTECODE=1` set by the `Makefile`). Tests write only into `tempfile.TemporaryDirectory()`. They may read fixture files that the card commits under `testdata/`, but never write there at test time. Tests never start a real engine or container; they use the fake adapter in `testdata/`.
 - A card whose `Files` line names a path under `testdata/` may create `testdata/` itself if it is missing.
-- `runner/` is a package: `runner/__init__.py` exists and is empty. Import modules as `from runner import cases`.
+- C1 creates the `runner/` package and its empty `runner/__init__.py`; neither exists before C1. Later cards use that package. Import modules as `from runner import cases`.
 - Messages that a tool prints name files, case ids, step numbers, and problem codes only. They never print the text of a case's `keys`, `text`, or `preedit`, or a dictionary line, except where a rule below says so.
 
 ## C1. Case and dictionary validator
 
 - Needs: none.
 - Spec: `SPEC.md` sections 3 and 4; ADR `../docs/adr/0003-conformance-case-format.md`.
-- Files: `runner/__init__.py`, `runner/cases.py`, `runner/validate.py`, `runner/test_cases.py`, `testdata/validate/` (any files under it).
+- Files: `runner/__init__.py`, `runner/cases.py`, `runner/validate.py`, `runner/test_cases.py`, `runner/test_validate.py`, `testdata/validate/` (any files under it).
 
 ### Data shape (`runner/cases.py`)
 
@@ -38,7 +38,7 @@ class Case:
 @dataclass(frozen=True)
 class Problem:
     file: str                      # base name of the case or dictionary file, e.g. "04-conversion.toml", "basic.jisyo"
-    where: str                     # "-" for the whole file, a case id, "#<n>" (case position), "<case id>#<step number from 1>", or "line <n>" (dictionaries)
+    where: str                     # "-", a case label, "<case label>#<step number from 1>", or "line <n>"; see rules below
     code: str                      # one of the codes in the table below
 
 MODES = ("hiragana", "katakana", "hankaku-katakana", "zenkaku-latin", "ascii")
@@ -49,8 +49,12 @@ def load_cases(cases_dir: pathlib.Path, dict_dir: pathlib.Path) -> tuple[list[Ca
 ```
 
 - `tokenize` splits on single spaces and checks every token against SPEC 3.4. It raises `ValueError("keys-token")` for a token that is not in the table, and `ValueError("keys-spacing")` for an empty string, a leading or trailing space, or two spaces in a row. `keys-spacing` is checked first.
-- `load_cases` reads every file in `cases_dir` whose name ends in `.toml`, in name order, and returns the cases of all files in file order, then case order within the file. A case with any problem is left out of the list; its problems are in the second value. A file with a `file-name`, `toml-syntax`, `top-key`, or `group-key` problem contributes no cases. Within one file, the file-level problems come first (in the order of the table below), then the problems of each case in case order; within one case, the case-level problems in table order, then the problems of each step in step order, and within one step in table order.
-- `validate_dict` checks one dictionary file. `load_cases` does not call it; `validate.py` does.
+- `load_cases` considers every regular file in `cases_dir` whose name ends in `.toml`, in name order. Both returned lists follow that file order, then case order within each file. A case with any problem contributes no `Case` value.
+- Check `file-name` first. On that problem, do not open or parse the file and return only `file-name` for it. Otherwise load it with `tomllib.load` from a binary file. On `toml-syntax`, return only that problem for the file. Otherwise check both `top-key` and `group-key`, in that order. If either occurs, do not inspect cases or reserve their ids. Such a file contributes no cases.
+- In a file that passes those checks, inspect every case. Its label is its `id` when that value is a string, even an invalid-pattern string; otherwise the label is `#<n>`, its 1-based case position in the file. All case-level problems use that label. All step problems use `<label>#<step position from 1>`, so a missing id in case 2, step 1 uses `#2#1`.
+- Within each case, return case-level problems in table order, then step problems in step order and table order within each step. Emit each code at most once per file, case, or step at its stated level, except dictionary-name checks: `dict-name` and `dict-missing` each emit once per offending occurrence, including repeated names. For each code, visit `dicts` in array order, then `user_dict`. Multiple unknown keys still give one `case-key` or `step-key`.
+- A `case-key` or `step-key` does not suppress independent checks. Check id pattern and duplicate only for a string id. Every string id reserves its first occurrence, even when its case has another problem or the id has an invalid pattern; later occurrences give `id-duplicate`. Inspect dictionary names from `dicts` only when it is a non-empty array of strings, and inspect `user_dict` only when it is a string. Inspect steps only when `step` is a non-empty array of tables. For each step, tokenize only string `keys`; check `mode-value` only for a string `mode`. `step-empty` checks presence of observation keys, not their types.
+- `validate_dict` checks one dictionary file. `load_cases` does not call it or read dictionary bytes; `validate.py` does. Before any dictionary path check in `load_cases`, check the name against SPEC 3.2. For an invalid name, emit `dict-name` and do not construct or inspect its path. For a valid name, require `<dict_dir>/<name>.jisyo` to be a regular file whose resolved parent equals `dict_dir.resolve()`; otherwise emit `dict-missing`. Do not open a file outside that directory.
 
 ### Problem codes
 
@@ -58,18 +62,19 @@ Case files:
 
 | Code | `where` | When |
 |---|---|---|
-| `file-name` | `-` | The name does not match `^[0-9]{2}-[a-z0-9-]+\.toml$`. |
-| `toml-syntax` | `-` | `tomllib.load` raises `tomllib.TOMLDecodeError` or `UnicodeDecodeError` (a file that is not UTF-8). No other check runs on the file. |
-| `top-key` | `-` | A top-level key other than `group` and `case`, or `case` is missing or is not an array of tables, or it is empty. |
-| `group-key` | `-` | `group` is missing, has a key other than `title` and `ref`, misses one of them, or one of them is not a non-empty string. |
-| `case-key` | case id, or `#<n>` (the case's position from 1 in its file) when `id` is missing or not a string | A key other than `id`, `dicts`, `user_dict`, `note`, `step`; or `id`, `dicts`, or `step` missing; or a value of the wrong type (`dicts` must be a non-empty array of strings, `user_dict` and `note` strings, `step` a non-empty array of tables). |
-| `id-pattern` | case id | `id` does not match `^[a-z0-9]+(\.[a-z0-9-]+)+$`. |
-| `id-duplicate` | case id | The id was already used by an earlier case in any file. The first use is not a problem. |
-| `dict-missing` | case id | A name in `dicts` or the `user_dict` name has no file `<dict_dir>/<name>.jisyo`. One problem per missing name, `dicts` names first in their order, then `user_dict`. |
-| `step-key` | `<id>#<n>` | A step key other than `keys`, `text`, `preedit`, `mode`; or `keys` missing; or a value that is not a string. |
-| `step-empty` | `<id>#<n>` | The step has none of `text`, `preedit`, `mode`. |
-| `keys-spacing`, `keys-token` | `<id>#<n>` | `tokenize` raised it for the step's `keys`. |
-| `mode-value` | `<id>#<n>` | `mode` is not in `MODES`. |
+| `file-name` | `-` | The name does not match `^[0-9]{2}-[a-z0-9-]+\.toml$`. Stop this file before opening it. |
+| `toml-syntax` | `-` | `tomllib.load` raises `tomllib.TOMLDecodeError` or `UnicodeDecodeError`, including invalid UTF-8 or a UTF-8 BOM. Stop this file. |
+| `top-key` | `-` | A top-level key other than `group` and `case`, or `case` is missing, is not a non-empty array, or contains a non-table item. |
+| `group-key` | `-` | `group` is missing, is not a table, has a key other than `title` and `ref`, misses one of them, or one of them is not a non-empty string. |
+| `case-key` | case label | A key other than `id`, `dicts`, `user_dict`, `note`, `step`; or `id`, `dicts`, or `step` missing; or a value of the wrong type (`id`, `user_dict`, and `note` must be strings, `dicts` a non-empty array of strings, `step` a non-empty array of tables). |
+| `id-pattern` | case label | A string `id` does not match `^[a-z0-9]+(\.[a-z0-9-]+)+$`. |
+| `id-duplicate` | case label | A string id has an earlier occurrence reserved by the rules above. The first occurrence is not a duplicate. |
+| `dict-name` | case label | A dictionary name fails SPEC 3.2's pattern. Do not check a path for that occurrence. |
+| `dict-missing` | case label | A valid dictionary name does not resolve to a regular file directly inside the resolved dictionary directory. |
+| `step-key` | `<label>#<n>` | A step key other than `keys`, `text`, `preedit`, `mode`; or `keys` missing; or a value that is not a string. |
+| `step-empty` | `<label>#<n>` | The step has none of `text`, `preedit`, `mode`. |
+| `keys-spacing`, `keys-token` | `<label>#<n>` | `tokenize` raised it for string `keys`. These are alternatives, with spacing checked first. |
+| `mode-value` | `<label>#<n>` | A string `mode` is not in `MODES`. |
 
 Dictionary files (`validate_dict`). The checks run in the order of this table. Problems are returned in that order; `dict-entry` and `dict-sort` problems together in line order. Lines count from 1.
 
@@ -79,7 +84,7 @@ Dictionary files (`validate_dict`). The checks run in the order of this table. P
 | `dict-line-end` | `-` | The file contains `\r`, or does not end with `\n`. One problem at most. No other check runs. |
 | `dict-coding-line` | `line 1` | Line 1 is not exactly `;; -*- mode: fundamental; coding: utf-8 -*-`. The other checks still run. |
 | `dict-markers` | `-` | The lines `;; okuri-ari entries.` and `;; okuri-nasi entries.` do not each appear exactly once, in that order. No `dict-entry` or `dict-sort` check runs. |
-| `dict-entry` | `line <n>` | Between line 2 and the okuri-ari marker, a line that does not start with `;`. After the okuri-ari marker, any line other than the okuri-nasi marker that is not `<midashi> /<cand>/<cand>/.../`: the midashi is non-empty and has no space or `/`, then one space, then `/`, then one or more non-empty candidates each followed by `/`, where no candidate contains `;`, `[`, or `]` or starts with `(`. A comment line after the okuri-ari marker is therefore a `dict-entry` problem. |
+| `dict-entry` | `line <n>` | From line 2 inclusive to the line before the okuri-ari marker inclusive, a line that does not start with `;`. This range is empty when the marker is on line 2. The marker itself is excluded. After the okuri-ari marker, any line other than the okuri-nasi marker that is not `<midashi> /<cand>/<cand>/.../`: the midashi is non-empty and has no space or `/`, then one space, then `/`, then one or more non-empty candidates each followed by `/`, where no candidate contains `;`, `[`, or `]` or starts with `(`. A comment line after the okuri-ari marker is therefore a `dict-entry` problem. |
 | `dict-sort` | `line <n>` of the later line | Among the lines without a `dict-entry` problem, an okuri-ari midashi that is not strictly smaller (by code point) than the previous okuri-ari midashi, or an okuri-nasi midashi that is not strictly larger than the previous okuri-nasi midashi. Lines with a `dict-entry` problem are skipped in this comparison. |
 
 ### `runner/validate.py`
@@ -89,9 +94,13 @@ Dictionary files (`validate_dict`). The checks run in the order of this table. P
 - Prints each problem to stdout as `<file>: <where>: <code>`, one per line, case-file problems first, then dictionary problems, and exits 1 if there is any.
 - Otherwise prints exactly `OK <c> cases in <f> files, <d> dictionaries` to stdout and exits 0. `<c>` is the number of cases loaded, `<f>` the number of `*.toml` files read, `<d>` the number of `*.jisyo` files checked.
 
-### Tests (`runner/test_cases.py`)
+### Tests (`runner/test_cases.py` and `runner/test_validate.py`)
 
-Write the fixture files each test needs into a temporary directory, or under `testdata/validate/`. Every test that expects problems asserts the full list of `(file, where, code)` triples, in order.
+Put `test_validate_cli_ok`, `test_validate_cli_problems`, and `test_validate_cli_problem_order` in `runner/test_validate.py`. Put every other test below in `runner/test_cases.py`.
+
+At test time, write all fixtures into `tempfile.TemporaryDirectory()`. Static synthetic fixtures may be committed under `testdata/validate/` during implementation and read or copied into a temporary directory, but tests never write there. No unittest reads the repository's `cases/` or `dict/`: `make check` already validates those through its `validate` target.
+
+Unless a row changes a field to test it, every case fixture has a distinct valid id, `dicts = ["basic"]`, and at least one step with string `keys = "a"` and `text = ""`. Every file has a valid name and a group with non-empty `title` and `ref`. Create a valid `basic.jisyo` in the temporary dictionary directory, using the SPEC 4 example; likewise create any other dictionary that a row expects to exist. Leave out only the fields and files the row explicitly tests as missing. A step with an extra key still has an observation; only the step testing `step-empty` omits all observations. Thus each fixture has only the stated defects. Every test that expects problems asserts the full list of `(file, where, code)` triples, in order.
 
 | Test | Assert |
 |---|---|
@@ -121,9 +130,26 @@ Write the fixture files each test needs into a temporary directory, or under `te
 | `test_validate_dict_entry` | One file whose okuri-nasi section is `かんじ 漢字`, `かんじ /漢字;注/`, `こめ /(concat "a")/`, `;; comment`, `さ /差/`: exactly four `dict-entry` problems, at those four lines in order, and no `dict-sort`. |
 | `test_validate_cli_ok` | Running `python3 -m runner.validate --cases <tmp> --dicts <tmp>` on valid fixtures prints `OK 2 cases in 1 files, 1 dictionaries` and exits 0. |
 | `test_validate_cli_problems` | On a fixture with one `mode-value` problem it prints `<file>: <id>#1: mode-value` and exits 1. |
-| `test_repository_cases_are_valid` | `load_cases` on the repository's own `cases/` and `dict/` returns no problems and at least 80 cases, and `validate_dict` returns no problems for every `dict/*.jisyo`. |
+| `test_fixture_cases_are_valid` | Two valid synthetic case files with three cases in total and a valid dictionary, all in a temporary directory: `load_cases` returns those three cases and no problems; `validate_dict` returns no problems. Do not read repository cases or dictionaries. |
+| `test_problem_file_order` | Create `02-b.toml` before `01-a.toml`, with one `mode-value` problem in each. The two triples are for `01-a.toml` then `02-b.toml`, each at its case label plus `#1`. |
+| `test_problem_multiplicity` | One case has unknown keys `foo` and `bar`; its one step also has unknown keys `foo` and `bar`. Exactly one `case-key` at the case label, then one `step-key` at that label plus `#1`. |
+| `test_missing_or_nonstring_id_labels` | Case 1 has no id; case 2 has integer id `7`. In each case, `dicts = ["nope"]` and step 1 has `keys = "a  b"` with an observation. Exactly `case-key`, `dict-missing`, `keys-spacing` per case, using labels `#1`, `#2` and step labels `#1#1`, `#2#1`. No id pattern or duplicate problems. |
+| `test_invalid_case_reserves_id` | `01-a.toml` has id `test.same` and an extra case key; `02-b.toml` has the same id and no other defects. Exactly `case-key` in the first file, then `id-duplicate` in the second. No cases load. |
+| `test_file_name_stops_before_parse` | `1-a.toml` contains byte `0xff`. Exactly `[("1-a.toml", "-", "file-name")]`; no cases load. |
+| `test_case_bom_is_syntax` | A valid case file prefixed with UTF-8 BOM gives exactly one `toml-syntax` at `-`; no cases load. |
+| `test_dict_name_rejected` | Loop over names `"../outside"`, `"/outside"`, `"a/b"`, `"a\\b"`, `".."`, and `""`, testing each in `dicts` and then in `user_dict`. Each fixture gives exactly one `dict-name` at the case label, no `dict-missing`, and no loaded case. All fixtures stay inside a temporary directory. |
+| `test_dict_resolved_path_stays_inside` | In a temporary directory, create `dict/basic.jisyo` as a symlink to a valid synthetic `outside.jisyo` in its parent. A case naming `basic` gives exactly one `dict-missing` at its label and no case. No private or real dictionary is used. |
+| `test_repeated_missing_names` | `dicts = ["nope", "nope"]` and `user_dict = "nope"` give exactly three `dict-missing` triples at the case label. |
+| `test_validate_dict_before_marker` | In the SPEC 4 example insert a non-comment line as line 2, shifting the okuri-ari marker to line 3. Exactly one `dict-entry` at `line 2`. With a comment at line 2 instead, no problems. The unchanged example with the marker on line 2 has no problems. |
+| `test_validate_cli_problem_order` | Two case files with one `mode-value` each, then `a.jisyo` and `b.jisyo` with one wrong coding line each, plus valid `basic.jisyo`. The CLI prints exactly the two case triples in file-name order, then the two `dict-coding-line` triples in dictionary-name order, one per line with a final newline, and exits 1. |
 
-Must fail without: `id-duplicate` check → `test_id_duplicate_problem`; the sort check → `test_validate_dict_sort`.
+Must fail without: `id-duplicate` check → `test_id_duplicate_problem`.
+
+Must fail without: dictionary sort check → `test_validate_dict_sort`.
+
+Must fail without: dictionary name validation → `test_dict_name_rejected`.
+
+Must fail without: resolved dictionary directory check → `test_dict_resolved_path_stays_inside`.
 
 - Done: `make check` exits 0.
 
