@@ -84,23 +84,25 @@ Dictionary files (`validate_dict`). The checks run in the order of this table. P
 | `dict-line-end` | `-` | The file contains `\r`, or does not end with `\n`. One problem at most. No other check runs. |
 | `dict-coding-line` | `line 1` | Line 1 is not exactly `;; -*- mode: fundamental; coding: utf-8 -*-`. The other checks still run. |
 | `dict-markers` | `-` | The lines `;; okuri-ari entries.` and `;; okuri-nasi entries.` do not each appear exactly once, in that order. No `dict-entry` or `dict-sort` check runs. |
-| `dict-entry` | `line <n>` | From line 2 inclusive to the line before the okuri-ari marker inclusive, a line that does not start with `;`. This range is empty when the marker is on line 2. The marker itself is excluded. After the okuri-ari marker, any line other than the okuri-nasi marker that is not `<midashi> /<cand>/<cand>/.../`: the midashi is non-empty and has no space or `/`, then one space, then `/`, then one or more non-empty candidates each followed by `/`, where no candidate contains `;`, `[`, or `]` or starts with `(`. A comment line after the okuri-ari marker is therefore a `dict-entry` problem. |
+| `dict-entry` | `line <n>` | From line 2 inclusive to the line before the okuri-ari marker inclusive, a line that does not start with `;`. This range is empty when the marker is on line 1 or line 2. A marker on line 1 still causes `dict-coding-line`, but does not itself cause `dict-entry`. The marker itself is excluded. After the okuri-ari marker, any line other than the okuri-nasi marker that is not `<midashi> /<cand>/<cand>/.../`: the midashi is non-empty and has no space or `/`, then one space, then `/`, then one or more non-empty candidates each followed by `/`, where no candidate contains `;`, `[`, or `]` or starts with `(`. A comment line after the okuri-ari marker is therefore a `dict-entry` problem. |
 | `dict-sort` | `line <n>` of the later line | Among the lines without a `dict-entry` problem, an okuri-ari midashi that is not strictly smaller (by code point) than the previous okuri-ari midashi, or an okuri-nasi midashi that is not strictly larger than the previous okuri-nasi midashi. Lines with a `dict-entry` problem are skipped in this comparison. |
 
 ### `runner/validate.py`
 
-- Run as `python3 -m runner.validate [--cases DIR] [--dicts DIR]` from the repository root. Defaults: `cases` and `dict` next to the `runner` directory (resolved from `__file__`, not from the current directory).
+- Run as `python3 -m runner.validate [--cases DIR] [--dicts DIR] [--min-cases N]` from the repository root. Defaults: `cases` and `dict` next to the `runner` directory (resolved from `__file__`, not from the current directory); `--min-cases` defaults to `0`. Parse N as an integer; a negative value or a value that is not an integer is an argparse usage error with exit 2.
 - Calls `load_cases`, then `validate_dict` on every `*.jisyo` in the dict directory in name order.
-- Prints each problem to stdout as `<file>: <where>: <code>`, one per line, case-file problems first, then dictionary problems, and exits 1 if there is any.
-- Otherwise prints exactly `OK <c> cases in <f> files, <d> dictionaries` to stdout and exits 0. `<c>` is the number of cases loaded, `<f>` the number of `*.toml` files read, `<d>` the number of `*.jisyo` files checked.
+- Prints each problem to stdout as `<file>: <where>: <code>`, one per line, case-file problems first, then dictionary problems, and exits 1 if there is any. Do not check the count floor in this branch.
+- With no problems, if the number of loaded cases is less than N, print exactly `cases: -: case-count` plus a newline to stdout and exit 1. This CLI-only problem is not returned by `load_cases`. Do not also print an OK line.
+- Otherwise prints exactly `OK <c> cases in <f> files, <d> dictionaries` plus a newline to stdout and exits 0. `<c>` is the number of cases loaded, `<f>` the number of `*.toml` files read, `<d>` the number of `*.jisyo` files checked.
+- The lead-owned Makefile runs `python3 -m runner.validate --min-cases 80` in `make validate`, which `make check` includes. This retains the repository case-count floor without letting unittests read lead-owned cases. The worker implements the option but never edits Makefile. The gate writes no git state.
 
 ### Tests (`runner/test_cases.py` and `runner/test_validate.py`)
 
-Put `test_validate_cli_ok`, `test_validate_cli_problems`, and `test_validate_cli_problem_order` in `runner/test_validate.py`. Put every other test below in `runner/test_cases.py`.
+Put every test whose name starts with `test_validate_cli_` in `runner/test_validate.py`. Put every other test below in `runner/test_cases.py`.
 
 At test time, write all fixtures into `tempfile.TemporaryDirectory()`. Static synthetic fixtures may be committed under `testdata/validate/` during implementation and read or copied into a temporary directory, but tests never write there. No unittest reads the repository's `cases/` or `dict/`: `make check` already validates those through its `validate` target.
 
-Unless a row changes a field to test it, every case fixture has a distinct valid id, `dicts = ["basic"]`, and at least one step with string `keys = "a"` and `text = ""`. Every file has a valid name and a group with non-empty `title` and `ref`. Create a valid `basic.jisyo` in the temporary dictionary directory, using the SPEC 4 example; likewise create any other dictionary that a row expects to exist. Leave out only the fields and files the row explicitly tests as missing. A step with an extra key still has an observation; only the step testing `step-empty` omits all observations. Thus each fixture has only the stated defects. Every test that expects problems asserts the full list of `(file, where, code)` triples, in order.
+The defaults in this paragraph apply only where a test row does not explicitly specify a different fixture property. This includes file names, encoding, file contents, case fields, step fields, and dictionary files. In particular, `test_file_name_problem` and `test_file_name_stops_before_parse` deliberately use the invalid file name `1-a.toml`. Otherwise every case fixture has a distinct valid id, `dicts = ["basic"]`, and at least one step with string `keys = "a"` and `text = ""`. Otherwise every file has a valid name and a group with non-empty `title` and `ref`. Create a valid `basic.jisyo` in the temporary dictionary directory, using the SPEC 4 example; likewise create any other dictionary that a row expects to exist. Leave out only the fields and files the row explicitly tests as missing. A step with an extra key still has an observation; only the step testing `step-empty` omits all observations. Thus each fixture has only the stated defects. Every test that expects problems asserts the full list of `(file, where, code)` triples, in order.
 
 | Test | Assert |
 |---|---|
@@ -130,6 +132,9 @@ Unless a row changes a field to test it, every case fixture has a distinct valid
 | `test_validate_dict_entry` | One file whose okuri-nasi section is `かんじ 漢字`, `かんじ /漢字;注/`, `こめ /(concat "a")/`, `;; comment`, `さ /差/`: exactly four `dict-entry` problems, at those four lines in order, and no `dict-sort`. |
 | `test_validate_cli_ok` | Running `python3 -m runner.validate --cases <tmp> --dicts <tmp>` on valid fixtures prints `OK 2 cases in 1 files, 1 dictionaries` and exits 0. |
 | `test_validate_cli_problems` | On a fixture with one `mode-value` problem it prints `<file>: <id>#1: mode-value` and exits 1. |
+| `test_validate_cli_min_cases` | Loop over two valid cases in a temporary directory with N equal to 0, 2, 3, and 80. For 0 and 2, stdout is exactly `OK 2 cases in 1 files, 1 dictionaries\n` and exit is 0. For 3 and 80, stdout is exactly `cases: -: case-count\n` and exit is 1. |
+| `test_validate_cli_min_cases_with_problems` | One case with a `mode-value` problem and `--min-cases 80`: stdout is exactly `<file>: <id>#1: mode-value\n`, exit is 1, and there is no case-count or OK line. |
+| `test_validate_cli_min_cases_usage` | Loop over `--min-cases -1` and `--min-cases nope` with valid temporary fixtures. Each exits 2, prints nothing to stdout, and writes an argparse usage error to stderr. Do not assert argparse's version-dependent wording. |
 | `test_fixture_cases_are_valid` | Two valid synthetic case files with three cases in total and a valid dictionary, all in a temporary directory: `load_cases` returns those three cases and no problems; `validate_dict` returns no problems. Do not read repository cases or dictionaries. |
 | `test_problem_file_order` | Create `02-b.toml` before `01-a.toml`, with one `mode-value` problem in each. The two triples are for `01-a.toml` then `02-b.toml`, each at its case label plus `#1`. |
 | `test_problem_multiplicity` | One case has unknown keys `foo` and `bar`; its one step also has unknown keys `foo` and `bar`. Exactly one `case-key` at the case label, then one `step-key` at that label plus `#1`. |
@@ -141,6 +146,7 @@ Unless a row changes a field to test it, every case fixture has a distinct valid
 | `test_dict_resolved_path_stays_inside` | In a temporary directory, create `dict/basic.jisyo` as a symlink to a valid synthetic `outside.jisyo` in its parent. A case naming `basic` gives exactly one `dict-missing` at its label and no case. No private or real dictionary is used. |
 | `test_repeated_missing_names` | `dicts = ["nope", "nope"]` and `user_dict = "nope"` give exactly three `dict-missing` triples at the case label. |
 | `test_validate_dict_before_marker` | In the SPEC 4 example insert a non-comment line as line 2, shifting the okuri-ari marker to line 3. Exactly one `dict-entry` at `line 2`. With a comment at line 2 instead, no problems. The unchanged example with the marker on line 2 has no problems. |
+| `test_validate_dict_marker_on_first_line` | Remove the coding line from the otherwise valid SPEC 4 example, so the okuri-ari marker is on line 1. Exactly `[(<name>, "line 1", "dict-coding-line")]`, with no `dict-entry` or other problem. |
 | `test_validate_cli_problem_order` | Two case files with one `mode-value` each, then `a.jisyo` and `b.jisyo` with one wrong coding line each, plus valid `basic.jisyo`. The CLI prints exactly the two case triples in file-name order, then the two `dict-coding-line` triples in dictionary-name order, one per line with a final newline, and exits 1. |
 
 Must fail without: `id-duplicate` check → `test_id_duplicate_problem`.
@@ -150,6 +156,8 @@ Must fail without: dictionary sort check → `test_validate_dict_sort`.
 Must fail without: dictionary name validation → `test_dict_name_rejected`.
 
 Must fail without: resolved dictionary directory check → `test_dict_resolved_path_stays_inside`.
+
+Must fail without: minimum case count check → `test_validate_cli_min_cases`.
 
 - Done: `make check` exits 0.
 
@@ -275,7 +283,7 @@ Each test writes its own case files, dictionaries, engines file, and fake script
 | `test_hello_mismatch` | The fake's `engine` differs from the table name: `hello-failed`, no case requests recorded. |
 | `test_request_shape` | `record` holds, after hello, exactly the SPEC 5.2 request for a case with `dicts = ["a", "b"]`: absolute paths in that order, `encoding` `utf-8`, `user_dict.path` ending in `user.jisyo`, and `keys` split into tokens. |
 | `test_user_dict_starts_with_markers` | `user_dict_text`: the step's `text` is `";; okuri-ari entries.\n;; okuri-nasi entries.\n"` and the case expecting that passes. |
-| `test_user_dict_copied_from_dict` | A case with `user_dict = "u"`: the `text` equals the bytes of `dict/u.jisyo`. |
+| `test_user_dict_copied_from_dict` | A case with `user_dict = "u"`: the JSON string `text` equals the contents of the temporary fixture `dict/u.jisyo` decoded as UTF-8, without newline translation. Compare strings, not a string with bytes. |
 | `test_user_dict_is_fresh_per_case` | Two cases with `append_user_dict`: the second case's `text` holds only its own line after the markers. |
 | `test_table_format` | Two files, two engines (one `n/a`): stdout is exactly the expected table string, columns labelled `<name> <version>` and `<name>`. |
 | `test_details_lines` | One fail, one error, one timeout: the details lines are exactly as specified. |
