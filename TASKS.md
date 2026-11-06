@@ -76,7 +76,7 @@ Case files:
 | `keys-spacing`, `keys-token` | `<label>#<n>` | `tokenize` raised it for string `keys`. These are alternatives, with spacing checked first. |
 | `mode-value` | `<label>#<n>` | A string `mode` is not in `MODES`. |
 
-Dictionary files (`validate_dict`). The checks run in the order of this table. Problems are returned in that order; `dict-entry` and `dict-sort` problems together in line order. Lines count from 1.
+Dictionary files (`validate_dict`). Lines count from 1. Check `dict-encoding`, `dict-line-end`, `dict-coding-line`, and `dict-markers` in that order, with the early stops stated in their rows. Return any of these problems before entry-level problems. If the markers are valid, inspect the remaining lines in ascending line-number order and interleave `dict-entry` and `dict-sort` problems in that same order. Do not group all `dict-entry` problems before `dict-sort`. A line with `dict-entry` is not checked for `dict-sort` and does not update the previous valid midashi. Every syntactically valid entry updates the previous midashi for its section, even if it has a `dict-sort` problem. Thus one line cannot emit both codes.
 
 | Code | `where` | When |
 |---|---|---|
@@ -121,7 +121,8 @@ The defaults in this paragraph apply only where a test row does not explicitly s
 | `test_case_key_problem` | A case with an extra key `foo` gives `case-key` with its id; a case without `id` (the second in its file) gives `case-key` at `#2`. |
 | `test_id_pattern_problem` | Id `Bad.Id` gives `id-pattern`. |
 | `test_id_duplicate_problem` | The same id in two files gives one `id-duplicate`, on the second file. The first case is loaded. |
-| `test_dict_missing_problem` | `dicts = ["nope"]` gives `dict-missing`; so does `user_dict = "nope"`. |
+| `test_dict_missing_problem` | One case in one temporary `01-missing.toml`, with id `test.missing-system`, `dicts = ["nope"]`, and no `user_dict`. Do not create `nope.jisyo`. Exactly `[("01-missing.toml", "test.missing-system", "dict-missing")]` and no loaded cases. This test has only this fixture. |
+| `test_user_dict_missing_problem` | A separate test with its own temporary directory and one case in `01-missing.toml`, with id `test.missing-user`, valid `dicts = ["basic"]`, and `user_dict = "nope"`. Create valid `basic.jisyo`, but no `nope.jisyo`. Exactly `[("01-missing.toml", "test.missing-user", "dict-missing")]` and no loaded cases. |
 | `test_step_problems` | One case with steps: an extra key (`step-key` at `id#1`), no observation (`step-empty` at `id#2`), `keys = "a  b"` (`keys-spacing` at `id#3`), `mode = "kana"` (`mode-value` at `id#4`), in that order. |
 | `test_validate_dict_ok` | A copy of the SPEC 4 example gives no problems. |
 | `test_validate_dict_coding_line` | The SPEC 4 example with line 1 changed to `;; coding: utf-8` gives exactly `[(<name>, "line 1", "dict-coding-line")]`. |
@@ -133,6 +134,7 @@ The defaults in this paragraph apply only where a test row does not explicitly s
 | `test_validate_dict_line_end` | The SPEC 4 example with CRLF line ends gives exactly `[(<name>, "-", "dict-line-end")]`; the example without its final `\n` gives the same. |
 | `test_validate_dict_sort` | Two files. One has okuri-nasi `きょ` then `かんじ`: exactly one `dict-sort` at the `かんじ` line. The other has okuri-ari `うごk` then `もt`: exactly one `dict-sort` at the `もt` line. |
 | `test_validate_dict_entry` | One file whose okuri-nasi section is `かんじ 漢字`, `かんじ /漢字;注/`, `こめ /(concat "a")/`, `;; comment`, `さ /差/`: exactly four `dict-entry` problems, at those four lines in order, and no `dict-sort`. |
+| `test_validate_dict_interleaves_entry_and_sort` | Write temporary `mixed.jisyo` with exactly these bytes encoded as UTF-8: `;; -*- mode: fundamental; coding: utf-8 -*-\n;; okuri-ari entries.\n;; okuri-nasi entries.\nきょ /距/\nかんじ /漢字/\nこめ 米\nかんじ /幹事/\n`. `validate_dict` returns exactly `[("mixed.jisyo", "line 5", "dict-sort"), ("mixed.jisyo", "line 6", "dict-entry"), ("mixed.jisyo", "line 7", "dict-sort")]`. This pins interleaving rather than grouping problems by code. |
 | `test_validate_cli_ok` | Running `python3 -m runner.validate --cases <tmp> --dicts <tmp>` on valid fixtures prints `OK 2 cases in 1 files, 1 dictionaries` and exits 0. |
 | `test_validate_cli_problems` | On a fixture with one `mode-value` problem it prints `<file>: <id>#1: mode-value` and exits 1. |
 | `test_validate_cli_min_cases` | Loop over two valid cases in a temporary directory with N equal to 0, 2, 3, and 81. For 0 and 2, stdout is exactly `OK 2 cases in 1 files, 1 dictionaries\n` and exit is 0. For 3 and 81, stdout is exactly `cases: -: case-count\n` and exit is 1. |
