@@ -112,7 +112,9 @@ The preedit is the text the engine shows as uncommitted, as one string, with the
 - `*` (U+002A) separates the reading from the okurigana prefix, as in `▽うご*k`, while the okurigana is not complete.
 - Romaji typed but not yet converted to kana is part of the preedit, as in `▽かんj` or `s` alone in ■モード.
 
-Cursor marks, highlighting, underlines, and candidate windows are not part of the preedit. During dictionary registration, engines show the registration in different places (ddskk in the minibuffer, libskk inside the preedit), so cases do not check `preedit` on a step that ends inside registration.
+Cursor marks, highlighting, underlines, and candidate windows are not part of the preedit.
+
+A step never ends while dictionary registration is open. Engines show registration in different places (ddskk in the minibuffer, libskk and cskk inside the preedit), and ddskk cannot be observed while its minibuffer waits for input. A case puts every key from the key that opens registration to the key that closes it (`RET` or `C-g`) in one step.
 
 ### 3.6 Input mode
 
@@ -238,7 +240,7 @@ The runner and validator are cards (`TASKS.md`). They follow these rules:
 
 ## 8. The gate
 
-`make check` validates the syntax of every case file and dictionary against sections 3 and 4, with the checks that card C1 lists, and runs the runner's own tests. Two authoring rules cannot be checked mechanically and are the lead's to keep: no `preedit` check on a step that ends inside registration (3.5), and no `mode` check on a step that ends in SKK abbrev mode (3.6). It does not need the network or a container. Engine runs that need a container or a long time are separate `make` targets, named in `TASKS.md`.
+`make check` validates the syntax of every case file and dictionary against sections 3 and 4, with the checks that card C1 lists, and runs the runner's own tests. Two authoring rules cannot be checked mechanically and are the lead's to keep: no step ends inside registration (3.5), and no `mode` check on a step that ends in SKK abbrev mode (3.6). It does not need the network or a container. Engine runs that need a container or a long time are separate `make` targets, named in `TASKS.md`.
 
 ## 9. Versioning
 
