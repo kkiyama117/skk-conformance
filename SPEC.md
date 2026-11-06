@@ -61,18 +61,22 @@ mode = "hiragana"
 
 | Key | Type | Required | Meaning |
 |---|---|---|---|
-| `title` | string | yes | Row label in the pass table. |
-| `ref` | string | yes | Where in the ddskk manual the behavior is described. The manual is the text in `docs/05_basic.rst` and `docs/06_apps.rst` of the ddskk 17.2 source tree; its pages still carry the label 17.1. |
+| `title` | non-empty string | yes | Row label in the pass table. |
+| `ref` | non-empty string | yes | Where in the ddskk manual the behavior is described. The manual is the text in `docs/05_basic.rst` and `docs/06_apps.rst` of the ddskk 17.2 source tree; its pages still carry the label 17.1. |
+
+Non-empty means at least one character, without trimming whitespace. No other keys are allowed in `group`.
 
 ### 3.2 `[[case]]`
 
 | Key | Type | Required | Meaning |
 |---|---|---|---|
-| `id` | string | yes | Unique across all case files. Matches `^[a-z0-9]+(\.[a-z0-9-]+)+$`. |
+| `id` | string | yes | Unique across the cases in files that pass the file-level checks below. Matches `^[a-z0-9]+(\.[a-z0-9-]+)+$`. |
 | `dicts` | array of strings | yes, at least one | Names of system dictionaries, in search order. Name `x` means the file `dict/x.jisyo`. |
 | `user_dict` | string | no | Name of a dictionary in `dict/` to copy as the initial user dictionary. Without it the user dictionary starts as the two marker lines only (section 4). |
 | `note` | string | no | Free text for the reader. The runner ignores it. |
 | `step` | array of tables | yes, at least one | Section 3.3. |
+
+Before inspecting cases or reserving ids, the validator checks the file name, TOML and UTF-8 parsing, top-level structure, and `group`. The top level permits only `group` and a non-empty `case` array of tables. A file that fails any of these checks contributes no cases and reserves no ids. In a file that passes, the first occurrence of every string id reserves that id, even when its case has another problem or its id pattern is invalid. Later occurrences are duplicates. Missing or non-string ids reserve nothing. This is the scope of uniqueness above; a rejected file must be fixed before its cases participate.
 
 No other keys are allowed in a case. Each dictionary name in `dicts` and `user_dict` must match `^[a-z0-9][a-z0-9-]*$`. It names a regular file directly inside `dict/`; its resolved path must also remain directly inside the resolved dictionary directory. Reject an invalid name before constructing or checking its path. Never open a dictionary outside that directory through a case's name.
 

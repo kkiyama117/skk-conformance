@@ -5,7 +5,7 @@ export PYTHONDONTWRITEBYTECODE := 1
 check: validate test
 
 validate:
-	python3 -m runner.validate --min-cases 80
+	python3 -m runner.validate --min-cases 81
 
 test:
 	python3 -m unittest discover -s runner -t . -p 'test_*.py'

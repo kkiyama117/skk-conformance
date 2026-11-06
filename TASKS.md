@@ -65,7 +65,7 @@ Case files:
 | `file-name` | `-` | The name does not match `^[0-9]{2}-[a-z0-9-]+\.toml$`. Stop this file before opening it. |
 | `toml-syntax` | `-` | `tomllib.load` raises `tomllib.TOMLDecodeError` or `UnicodeDecodeError`, including invalid UTF-8 or a UTF-8 BOM. Stop this file. |
 | `top-key` | `-` | A top-level key other than `group` and `case`, or `case` is missing, is not a non-empty array, or contains a non-table item. |
-| `group-key` | `-` | `group` is missing, is not a table, has a key other than `title` and `ref`, misses one of them, or one of them is not a non-empty string. |
+| `group-key` | `-` | `group` is missing, is not a table, has a key other than `title` and `ref`, misses one of them, or one of them is not a non-empty string. Non-empty means length greater than zero without whitespace trimming, as in SPEC 3.1. |
 | `case-key` | case label | A key other than `id`, `dicts`, `user_dict`, `note`, `step`; or `id`, `dicts`, or `step` missing; or a value of the wrong type (`id`, `user_dict`, and `note` must be strings, `dicts` a non-empty array of strings, `step` a non-empty array of tables). |
 | `id-pattern` | case label | A string `id` does not match `^[a-z0-9]+(\.[a-z0-9-]+)+$`. |
 | `id-duplicate` | case label | A string id has an earlier occurrence reserved by the rules above. The first occurrence is not a duplicate. |
@@ -94,7 +94,7 @@ Dictionary files (`validate_dict`). The checks run in the order of this table. P
 - Prints each problem to stdout as `<file>: <where>: <code>`, one per line, case-file problems first, then dictionary problems, and exits 1 if there is any. Do not check the count floor in this branch.
 - With no problems, if the number of loaded cases is less than N, print exactly `cases: -: case-count` plus a newline to stdout and exit 1. This CLI-only problem is not returned by `load_cases`. Do not also print an OK line.
 - Otherwise prints exactly `OK <c> cases in <f> files, <d> dictionaries` plus a newline to stdout and exits 0. `<c>` is the number of cases loaded, `<f>` the number of `*.toml` files read, `<d>` the number of `*.jisyo` files checked.
-- The lead-owned Makefile runs `python3 -m runner.validate --min-cases 80` in `make validate`, which `make check` includes. This retains the repository case-count floor without letting unittests read lead-owned cases. The worker implements the option but never edits Makefile. The gate writes no git state.
+- The lead-owned Makefile runs `python3 -m runner.validate --min-cases 81` in `make validate`, which `make check` includes. The floor equals the current v1 case count, so a decrease from 81 to 80 must fail. It is a minimum, not an exact-count check: adding cases remains allowed. Deliberately removing a case requires the lead to review the coverage and change this floor explicitly. Unittests do not read lead-owned cases. The worker implements the option but never edits Makefile. The gate writes no git state.
 
 ### Tests (`runner/test_cases.py` and `runner/test_validate.py`)
 
@@ -115,6 +115,9 @@ The defaults in this paragraph apply only where a test row does not explicitly s
 | `test_file_name_problem` | A file named `1-a.toml` gives `[("1-a.toml","-","file-name")]` and no cases. |
 | `test_toml_syntax_problem` | An unparsable file gives only `toml-syntax`. |
 | `test_group_key_problem` | Missing `ref` gives `group-key` and no cases from that file. |
+| `test_group_empty_title` | A group with `title = ""` and valid `ref` gives exactly one `group-key` at `-` and no cases from that file. |
+| `test_group_empty_ref` | A group with `ref = ""` and valid `title` gives exactly one `group-key` at `-` and no cases from that file. |
+| `test_group_whitespace_string` | A valid file whose group title and ref are each one U+0020 loads without problems. Whitespace is not trimmed. |
 | `test_case_key_problem` | A case with an extra key `foo` gives `case-key` with its id; a case without `id` (the second in its file) gives `case-key` at `#2`. |
 | `test_id_pattern_problem` | Id `Bad.Id` gives `id-pattern`. |
 | `test_id_duplicate_problem` | The same id in two files gives one `id-duplicate`, on the second file. The first case is loaded. |
@@ -132,14 +135,20 @@ The defaults in this paragraph apply only where a test row does not explicitly s
 | `test_validate_dict_entry` | One file whose okuri-nasi section is `かんじ 漢字`, `かんじ /漢字;注/`, `こめ /(concat "a")/`, `;; comment`, `さ /差/`: exactly four `dict-entry` problems, at those four lines in order, and no `dict-sort`. |
 | `test_validate_cli_ok` | Running `python3 -m runner.validate --cases <tmp> --dicts <tmp>` on valid fixtures prints `OK 2 cases in 1 files, 1 dictionaries` and exits 0. |
 | `test_validate_cli_problems` | On a fixture with one `mode-value` problem it prints `<file>: <id>#1: mode-value` and exits 1. |
-| `test_validate_cli_min_cases` | Loop over two valid cases in a temporary directory with N equal to 0, 2, 3, and 80. For 0 and 2, stdout is exactly `OK 2 cases in 1 files, 1 dictionaries\n` and exit is 0. For 3 and 80, stdout is exactly `cases: -: case-count\n` and exit is 1. |
-| `test_validate_cli_min_cases_with_problems` | One case with a `mode-value` problem and `--min-cases 80`: stdout is exactly `<file>: <id>#1: mode-value\n`, exit is 1, and there is no case-count or OK line. |
+| `test_validate_cli_min_cases` | Loop over two valid cases in a temporary directory with N equal to 0, 2, 3, and 81. For 0 and 2, stdout is exactly `OK 2 cases in 1 files, 1 dictionaries\n` and exit is 0. For 3 and 81, stdout is exactly `cases: -: case-count\n` and exit is 1. |
+| `test_validate_cli_floor_rejects_80` | Generate 80 valid synthetic cases with distinct ids in one temporary case file and run the CLI with `--min-cases 81`. Exactly `cases: -: case-count\n` on stdout and exit 1. |
+| `test_validate_cli_floor_accepts_81` | Generate 81 valid synthetic cases with distinct ids in one temporary case file and run the CLI with `--min-cases 81`. Exactly `OK 81 cases in 1 files, 1 dictionaries\n` on stdout and exit 0. |
+| `test_validate_cli_min_cases_with_problems` | One case with a `mode-value` problem and `--min-cases 81`: stdout is exactly `<file>: <id>#1: mode-value\n`, exit is 1, and there is no case-count or OK line. |
 | `test_validate_cli_min_cases_usage` | Loop over `--min-cases -1` and `--min-cases nope` with valid temporary fixtures. Each exits 2, prints nothing to stdout, and writes an argparse usage error to stderr. Do not assert argparse's version-dependent wording. |
 | `test_fixture_cases_are_valid` | Two valid synthetic case files with three cases in total and a valid dictionary, all in a temporary directory: `load_cases` returns those three cases and no problems; `validate_dict` returns no problems. Do not read repository cases or dictionaries. |
 | `test_problem_file_order` | Create `02-b.toml` before `01-a.toml`, with one `mode-value` problem in each. The two triples are for `01-a.toml` then `02-b.toml`, each at its case label plus `#1`. |
 | `test_problem_multiplicity` | One case has unknown keys `foo` and `bar`; its one step also has unknown keys `foo` and `bar`. Exactly one `case-key` at the case label, then one `step-key` at that label plus `#1`. |
 | `test_missing_or_nonstring_id_labels` | Case 1 has no id; case 2 has integer id `7`. In each case, `dicts = ["nope"]` and step 1 has `keys = "a  b"` with an observation. Exactly `case-key`, `dict-missing`, `keys-spacing` per case, using labels `#1`, `#2` and step labels `#1#1`, `#2#1`. No id pattern or duplicate problems. |
 | `test_invalid_case_reserves_id` | `01-a.toml` has id `test.same` and an extra case key; `02-b.toml` has the same id and no other defects. Exactly `case-key` in the first file, then `id-duplicate` in the second. No cases load. |
+| `test_rejected_filename_does_not_reserve_id` | A valid TOML fixture named `01_bad.toml` contains id `test.same`; valid `02-good.toml` contains the same id. Exactly `[("01_bad.toml", "-", "file-name")]`; only the case from `02-good.toml` loads, with no duplicate problem. |
+| `test_rejected_syntax_does_not_reserve_id` | `01-bad.toml` contains a complete valid case with id `test.same` followed by an invalid TOML line `=`, and valid `02-good.toml` contains the same id. Exactly `[("01-bad.toml", "-", "toml-syntax")]`; only the case from `02-good.toml` loads, with no duplicate problem. |
+| `test_rejected_top_does_not_reserve_id` | Validly parsed `01-bad.toml` has an extra top-level `foo` key and case id `test.same`; valid `02-good.toml` has the same id. Exactly `[("01-bad.toml", "-", "top-key")]`; only the case from `02-good.toml` loads, with no duplicate problem. |
+| `test_rejected_group_does_not_reserve_id` | `01-bad.toml` has a group missing `ref` and case id `test.same`; valid `02-good.toml` has the same id. Exactly `[("01-bad.toml", "-", "group-key")]`; only the case from `02-good.toml` loads, with no duplicate problem. |
 | `test_file_name_stops_before_parse` | `1-a.toml` contains byte `0xff`. Exactly `[("1-a.toml", "-", "file-name")]`; no cases load. |
 | `test_case_bom_is_syntax` | A valid case file prefixed with UTF-8 BOM gives exactly one `toml-syntax` at `-`; no cases load. |
 | `test_dict_name_rejected` | Loop over names `"../outside"`, `"/outside"`, `"a/b"`, `"a\\b"`, `".."`, and `""`, testing each in `dicts` and then in `user_dict`. Each fixture gives exactly one `dict-name` at the case label, no `dict-missing`, and no loaded case. All fixtures stay inside a temporary directory. |
@@ -157,7 +166,7 @@ Must fail without: dictionary name validation → `test_dict_name_rejected`.
 
 Must fail without: resolved dictionary directory check → `test_dict_resolved_path_stays_inside`.
 
-Must fail without: minimum case count check → `test_validate_cli_min_cases`.
+Must fail without: minimum case count check → `test_validate_cli_min_cases`, `test_validate_cli_floor_rejects_80`.
 
 - Done: `make check` exits 0.
 
