@@ -320,7 +320,7 @@ Write a YAML workflow named `Conformance check`. Its only events are `pull_reque
 
 Set top-level permissions to exactly `contents: read`, with no job-level override. The job has these four steps, in this order:
 
-1. `Checkout`. Use `actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1`, with an end-of-line comment `v7.0.1`. Set `persist-credentials: false` and `fetch-depth: 1`. Set `ref` to the expression `${{ github.event.pull_request.head.sha || github.sha }}`: a PR tests its head commit, while a push tests the pushed commit. Do not add a token, SSH key, submodules, or another repository.
+1. `Checkout`. Use `actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1`, with an end-of-line comment `v7.0.1`. Set `persist-credentials: false` and `fetch-depth: 1`. Do not set `ref`. On a pull request, checkout must use the event's default merge result of the head into the base branch, not the head alone. On a push it must use the pushed commit. CI is reported on the PR head, but the tested tree is the merge result. Do not add a token, SSH key, submodules, or another repository.
 2. `Set up Python`. Use `actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0`, with an end-of-line comment `v7.1.0`. Set `python-version: '3.15.2'`, `architecture: 'x64'`, and `allow-prereleases: false`. Do not add a package cache, mirror, or token. This action supplies the interpreter through its tool cache or Python distribution download; do not rely on the runner's system Python and do not fall back to another Python version.
 3. `Python version`. Run exactly `python3 --version` so the native CI log identifies the interpreter.
 4. `Run gate`. Run exactly `make check` from the repository root. Do not replace it with selected tests, suppress its exit code, or allow failure. The Makefile already sets `PYTHONDONTWRITEBYTECODE=1`.
@@ -342,9 +342,9 @@ The following are separate acceptance checks by the lead or manager, not new Pyt
 | `ci_action_pins` | Both uses values contain exactly the full SHAs specified above, with the stated version comments. |
 | `ci_readonly_token` | Workflow permissions are exactly contents read and there is no job-level override. |
 | `ci_no_persisted_credentials` | Checkout explicitly sets persist-credentials false and adds no credential input. |
-| `ci_pr_head` | The checkout ref is the expression above; on the C9 pull request, the manager records the tested head SHA from the native run. |
+| `ci_pr_merge` | Checkout has no ref override. On the C9 pull request, the manager records both the PR head SHA receiving the check and the merge-result SHA actually checked out. |
 | `ci_python_version` | The native Python version step prints `Python 3.15.2`. A YAML field alone does not prove the installed version. |
-| `ci_pr_gate` | On a pull request head, the native Run gate step runs the full make check and succeeds. Record the run URL and commit. |
+| `ci_pr_gate` | On a pull request event, the native Run gate step runs the full make check on the merge result and succeeds. Record the run URL, PR head SHA, and tested merge SHA. |
 | `ci_main_push_gate` | After merge to main, the native push run executes the same check job and full gate. Record the run URL and commit before marking C9 done. |
 
 Must fail without: the explicit read-only permissions declaration → `ci_readonly_token`.
@@ -353,4 +353,4 @@ Must fail without: disabling persisted checkout credentials → `ci_no_persisted
 
 These two guard-removal checks are assertions on the workflow artifact, not unittest runs. The lead removes each declaration in turn, confirms that its acceptance assertion no longer holds, and restores the file exactly before any native CI run. Never run a deliberately weakened workflow on GitHub. Report these checks separately from test counts.
 
-- Done: local `make check` exits 0; the artifact checks hold; the manager confirms the native PR gate on the intended head; security review and manager review precede the PR. The main-push check and inclusion in origin/main are required before Status: done. Do not push, open a PR, merge, or mark done as a worker.
+- Done: local `make check` exits 0; the artifact checks hold; the manager confirms the native PR gate on the intended head's merge result; security review and manager review precede the PR. The main-push check and inclusion in origin/main are required before Status: done. Do not push, open a PR, merge, or mark done as a worker.
