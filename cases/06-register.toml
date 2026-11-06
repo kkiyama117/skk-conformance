@@ -1,0 +1,83 @@
+[group]
+title = "辞書登録モード"
+ref = "ddskk manual 5 辞書登録モード"
+
+[[case]]
+id = "register.no-okuri"
+dicts = ["register"]
+[[case.step]]
+keys = "H e n k a n t y u u SPC"
+text = ""
+[[case.step]]
+keys = "H e n k a n SPC T y u u SPC RET"
+text = "変換中"
+preedit = ""
+[[case.step]]
+keys = "H e n k a n t y u u SPC"
+text = "変換中"
+preedit = "▼変換中"
+
+[[case]]
+id = "register.okuri"
+dicts = ["register"]
+[[case.step]]
+keys = "U g o K u"
+text = ""
+[[case.step]]
+keys = "D o u SPC RET"
+text = "動く"
+preedit = ""
+[[case.step]]
+keys = "U g o K u"
+text = "動く"
+preedit = "▼動く"
+
+[[case]]
+id = "register.recursive"
+dicts = ["register"]
+[[case.step]]
+keys = "S a i k i t e k i SPC"
+text = ""
+[[case.step]]
+keys = "S a i k i SPC"
+text = ""
+[[case.step]]
+keys = "S a i SPC K i SPC RET"
+text = ""
+[[case.step]]
+keys = "S a i k i SPC T e k i SPC RET"
+text = "再帰的"
+preedit = ""
+
+[[case]]
+id = "register.empty-ret-cancels"
+dicts = ["register"]
+[[case.step]]
+keys = "F u g a SPC"
+text = ""
+[[case.step]]
+keys = "RET"
+text = ""
+preedit = "▽ふが"
+
+[[case]]
+id = "register.cg-cancels"
+dicts = ["register"]
+[[case.step]]
+keys = "F u g a SPC"
+text = ""
+[[case.step]]
+keys = "C-g"
+text = ""
+preedit = "▽ふが"
+
+[[case]]
+id = "register.after-last-candidate"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a n j i SPC SPC SPC"
+text = ""
+[[case.step]]
+keys = "RET"
+text = ""
+preedit = "▽かんじ"

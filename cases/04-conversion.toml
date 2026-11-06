@@ -1,0 +1,131 @@
+[group]
+title = "▼モード: 送り仮名が無い場合、次候補・前候補、暗黙の確定"
+ref = "ddskk manual 5 変換モード > ▼モード; 6 暗黙の確定のタイミング"
+
+[[case]]
+id = "conv.first-candidate"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a n j i"
+text = ""
+preedit = "▽かんじ"
+[[case.step]]
+keys = "SPC"
+text = ""
+preedit = "▼漢字"
+mode = "hiragana"
+
+[[case]]
+id = "conv.next-candidate"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a n j i SPC SPC"
+preedit = "▼幹事"
+
+[[case]]
+id = "conv.previous-candidate"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a n j i SPC SPC x"
+preedit = "▼漢字"
+
+[[case]]
+id = "conv.cj-commits"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a n j i SPC C-j"
+text = "漢字"
+preedit = ""
+mode = "hiragana"
+
+[[case]]
+id = "conv.cg-returns-to-reading"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a n j i SPC C-g"
+text = ""
+preedit = "▽かんじ"
+
+[[case]]
+id = "conv.implicit-kakutei"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a k u t e i SPC"
+preedit = "▼確定"
+[[case.step]]
+keys = "s"
+text = "確定"
+preedit = "s"
+[[case.step]]
+keys = "u"
+text = "確定す"
+preedit = ""
+
+[[case]]
+id = "conv.implicit-kakutei-by-uppercase"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a n j i SPC K a n j i"
+text = "漢字"
+preedit = "▽かんじ"
+
+[[case]]
+id = "conv.implicit-kakutei-by-punctuation"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a n j i SPC ."
+text = "漢字。"
+preedit = ""
+
+[[case]]
+id = "conv.ret-commits-newline"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a n j i SPC RET"
+text = "漢字\n"
+preedit = ""
+
+[[case]]
+id = "conv.list-select-lowercase"
+dicts = ["basic"]
+note = "From the fifth SPC the candidates 嘘 拒 拠 虚 挙 許 渠 are listed with the keys a s d f j k l."
+[[case.step]]
+keys = "K y o SPC SPC SPC SPC"
+preedit = "▼裾"
+[[case.step]]
+keys = "SPC k"
+text = "許"
+preedit = ""
+
+[[case]]
+id = "conv.list-select-uppercase"
+dicts = ["basic"]
+[[case.step]]
+keys = "K y o SPC SPC SPC SPC SPC K"
+text = "許"
+preedit = ""
+
+[[case]]
+id = "conv.list-select-first"
+dicts = ["basic"]
+[[case.step]]
+keys = "K y o SPC SPC SPC SPC SPC a"
+text = "嘘"
+preedit = ""
+
+[[case]]
+id = "conv.list-next-page"
+dicts = ["basic"]
+note = "The sixth SPC shows the second page, 据 去."
+[[case.step]]
+keys = "K y o SPC SPC SPC SPC SPC SPC a"
+text = "据"
+preedit = ""
+
+[[case]]
+id = "conv.list-x-back-to-inline"
+dicts = ["basic"]
+[[case.step]]
+keys = "K y o SPC SPC SPC SPC SPC x"
+text = ""
+preedit = "▼裾"

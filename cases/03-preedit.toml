@@ -1,0 +1,82 @@
+[group]
+title = "▽モード"
+ref = "ddskk manual 5 変換モード > ▽モード"
+
+[[case]]
+id = "preedit.uppercase-start"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a n j i"
+text = ""
+preedit = "▽かんじ"
+mode = "hiragana"
+
+[[case]]
+id = "preedit.pending-romaji"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a n j"
+preedit = "▽かんj"
+
+[[case]]
+id = "preedit.after-text"
+dicts = ["basic"]
+[[case.step]]
+keys = "a K a"
+text = "あ"
+preedit = "▽か"
+
+[[case]]
+id = "preedit.Q-start"
+dicts = ["basic"]
+[[case.step]]
+keys = "Q k a n j i"
+text = ""
+preedit = "▽かんじ"
+
+[[case]]
+id = "preedit.Q-digits"
+dicts = ["basic"]
+[[case.step]]
+keys = "Q 7 g a t u"
+preedit = "▽7がつ"
+
+[[case]]
+id = "preedit.katakana-mode"
+dicts = ["basic"]
+[[case.step]]
+keys = "q K a n a"
+preedit = "▽カナ"
+mode = "katakana"
+
+[[case]]
+id = "preedit.cj-exits"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a n j i C-j"
+text = "かんじ"
+preedit = ""
+
+[[case]]
+id = "preedit.cg-erases"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a n j i C-g"
+text = ""
+preedit = ""
+
+[[case]]
+id = "preedit.bs"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a n j i BS"
+text = ""
+preedit = "▽かん"
+
+[[case]]
+id = "preedit.ret-commits-newline"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a n j i RET"
+text = "かんじ\n"
+preedit = ""

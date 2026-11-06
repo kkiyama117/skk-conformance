@@ -1,0 +1,106 @@
+[group]
+title = "入力モード"
+ref = "ddskk manual 5 入力モード > 入力モードを切り替えるキー"
+
+[[case]]
+id = "mode.initial-hiragana"
+dicts = ["basic"]
+[[case.step]]
+keys = "a"
+text = "あ"
+preedit = ""
+mode = "hiragana"
+
+[[case]]
+id = "mode.q-to-katakana"
+dicts = ["basic"]
+[[case.step]]
+keys = "q a"
+text = "ア"
+mode = "katakana"
+
+[[case]]
+id = "mode.q-back-to-hiragana"
+dicts = ["basic"]
+[[case.step]]
+keys = "q q a"
+text = "あ"
+mode = "hiragana"
+
+[[case]]
+id = "mode.l-to-ascii"
+dicts = ["basic"]
+[[case.step]]
+keys = "l a B c"
+text = "aBc"
+preedit = ""
+mode = "ascii"
+
+[[case]]
+id = "mode.ascii-cj-to-hiragana"
+dicts = ["basic"]
+[[case.step]]
+keys = "l a"
+text = "a"
+mode = "ascii"
+[[case.step]]
+keys = "C-j a"
+text = "aあ"
+mode = "hiragana"
+
+[[case]]
+id = "mode.ascii-q-is-literal"
+dicts = ["basic"]
+[[case.step]]
+keys = "l q"
+text = "q"
+mode = "ascii"
+
+[[case]]
+id = "mode.ascii-space"
+dicts = ["basic"]
+[[case.step]]
+keys = "l a SPC b"
+text = "a b"
+mode = "ascii"
+
+[[case]]
+id = "mode.L-to-zenkaku-latin"
+dicts = ["basic"]
+[[case.step]]
+keys = "L a B c"
+text = "ａＢｃ"
+preedit = ""
+mode = "zenkaku-latin"
+
+[[case]]
+id = "mode.zenkaku-l-is-literal"
+dicts = ["basic"]
+[[case.step]]
+keys = "L l"
+text = "ｌ"
+mode = "zenkaku-latin"
+
+[[case]]
+id = "mode.zenkaku-cj-to-hiragana"
+dicts = ["basic"]
+[[case.step]]
+keys = "L a C-j i"
+text = "ａい"
+mode = "hiragana"
+
+[[case]]
+id = "mode.katakana-l-to-ascii"
+dicts = ["basic"]
+[[case.step]]
+keys = "q l a"
+text = "a"
+mode = "ascii"
+
+[[case]]
+id = "mode.katakana-L-to-zenkaku-latin"
+dicts = ["basic"]
+[[case.step]]
+keys = "q L a"
+text = "ａ"
+mode = "zenkaku-latin"

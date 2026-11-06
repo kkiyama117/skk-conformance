@@ -1,0 +1,40 @@
+[group]
+title = "▼モード: 送り仮名が有る場合"
+ref = "ddskk manual 5 変換モード > ▼モード > 送り仮名が有る場合"
+
+[[case]]
+id = "okuri.step-by-step"
+dicts = ["basic"]
+[[case.step]]
+keys = "U g o"
+preedit = "▽うご"
+[[case.step]]
+keys = "K"
+preedit = "▽うご*k"
+[[case.step]]
+keys = "u"
+text = ""
+preedit = "▼動く"
+
+[[case]]
+id = "okuri.cj-commits"
+dicts = ["basic"]
+[[case.step]]
+keys = "U g o K u C-j"
+text = "動く"
+preedit = ""
+
+[[case]]
+id = "okuri.other-vowel"
+dicts = ["basic"]
+[[case.step]]
+keys = "U g o K a C-j"
+text = "動か"
+
+[[case]]
+id = "okuri.sahen-as-noun"
+dicts = ["basic"]
+[[case.step]]
+keys = "U n d o u SPC s u r u"
+text = "運動する"
+preedit = ""

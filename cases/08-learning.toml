@@ -1,0 +1,57 @@
+[group]
+title = "個人辞書: 学習と誤った登録の削除"
+ref = "ddskk manual 5 辞書の保存; 6 誤った登録の削除"
+
+[[case]]
+id = "learn.move-to-front"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a n j i SPC SPC C-j"
+text = "幹事"
+[[case.step]]
+keys = "K a n j i SPC"
+text = "幹事"
+preedit = "▼幹事"
+[[case.step]]
+keys = "SPC"
+preedit = "▼漢字"
+
+[[case]]
+id = "learn.by-implicit-kakutei"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a n j i SPC SPC a"
+text = "幹事あ"
+preedit = ""
+[[case.step]]
+keys = "K a n j i SPC"
+text = "幹事あ"
+preedit = "▼幹事"
+
+[[case]]
+id = "learn.user-dict-first"
+dicts = ["basic"]
+user_dict = "purge-user"
+[[case.step]]
+keys = "S a i k i t e k i SPC"
+preedit = "▼再起的"
+[[case.step]]
+keys = "SPC"
+preedit = "▼再帰的"
+
+[[case]]
+id = "purge.user-word"
+dicts = ["basic"]
+user_dict = "purge-user"
+[[case.step]]
+keys = "S a i k i t e k i SPC"
+text = ""
+preedit = "▼再起的"
+[[case.step]]
+keys = "X"
+text = ""
+preedit = ""
+[[case.step]]
+keys = "S a i k i t e k i SPC"
+text = ""
+preedit = "▼再帰的"

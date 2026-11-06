@@ -1,0 +1,72 @@
+[group]
+title = "トグル変換と SKK abbrev モード"
+ref = "ddskk manual 6 かなモードからカタカナを入力; 全英文字の入力"
+
+[[case]]
+id = "toggle.hiragana-to-katakana"
+dicts = ["basic"]
+[[case.step]]
+keys = "K a t a k a n a q"
+text = "カタカナ"
+preedit = ""
+mode = "hiragana"
+
+[[case]]
+id = "toggle.katakana-to-hiragana"
+dicts = ["basic"]
+[[case.step]]
+keys = "q K a t a k a n a q"
+text = "かたかな"
+preedit = ""
+mode = "katakana"
+
+[[case]]
+id = "toggle.after-Q"
+dicts = ["basic"]
+[[case.step]]
+keys = "Q k a n a q"
+text = "カナ"
+preedit = ""
+
+[[case]]
+id = "abbrev.start"
+dicts = ["basic"]
+[[case.step]]
+keys = "/ f i l e"
+text = ""
+preedit = "▽file"
+
+[[case]]
+id = "abbrev.uppercase-is-literal"
+dicts = ["basic"]
+[[case.step]]
+keys = "/ F i l e"
+preedit = "▽File"
+
+[[case]]
+id = "abbrev.cq-to-zenkaku"
+dicts = ["basic"]
+[[case.step]]
+keys = "/ f i l e C-q"
+text = "ｆｉｌｅ"
+preedit = ""
+
+[[case]]
+id = "abbrev.convert"
+dicts = ["basic"]
+[[case.step]]
+keys = "/ f i l e SPC"
+text = ""
+preedit = "▼ファイル"
+
+[[case]]
+id = "abbrev.cj-commits-ascii"
+dicts = ["basic"]
+[[case.step]]
+keys = "/ f i l e C-j"
+text = "file"
+preedit = ""
+[[case.step]]
+keys = "a"
+text = "fileあ"
+mode = "hiragana"

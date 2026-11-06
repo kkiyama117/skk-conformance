@@ -1,0 +1,173 @@
+[group]
+title = "■モード: ローマ字入力"
+ref = "ddskk manual 5 変換モード > ■モード"
+
+[[case]]
+id = "romaji.vowels"
+dicts = ["basic"]
+[[case.step]]
+keys = "a i u e o"
+text = "あいうえお"
+preedit = ""
+
+[[case]]
+id = "romaji.ka-row"
+dicts = ["basic"]
+[[case.step]]
+keys = "k a k i k u k e k o"
+text = "かきくけこ"
+
+[[case]]
+id = "romaji.hepburn"
+dicts = ["basic"]
+[[case.step]]
+keys = "s h i c h i t s u f u j i"
+text = "しちつふじ"
+
+[[case]]
+id = "romaji.kunrei"
+dicts = ["basic"]
+[[case.step]]
+keys = "s i t i t u h u z i"
+text = "しちつふじ"
+
+[[case]]
+id = "romaji.nn"
+dicts = ["basic"]
+[[case.step]]
+keys = "n n"
+text = "ん"
+preedit = ""
+
+[[case]]
+id = "romaji.n-apostrophe"
+dicts = ["basic"]
+[[case.step]]
+keys = "n '"
+text = "ん"
+preedit = ""
+
+[[case]]
+id = "romaji.n-before-consonant"
+dicts = ["basic"]
+[[case.step]]
+keys = "s a n k a"
+text = "さんか"
+
+[[case]]
+id = "romaji.n-before-y"
+dicts = ["basic"]
+[[case.step]]
+keys = "k a n y a"
+text = "かにゃ"
+
+[[case]]
+id = "romaji.n-pending"
+dicts = ["basic"]
+[[case.step]]
+keys = "h o n"
+text = "ほ"
+preedit = "n"
+
+[[case]]
+id = "romaji.sokuon-t"
+dicts = ["basic"]
+[[case.step]]
+keys = "c h o t t o"
+text = "ちょっと"
+
+[[case]]
+id = "romaji.sokuon-p"
+dicts = ["basic"]
+[[case.step]]
+keys = "m o p p a r a"
+text = "もっぱら"
+
+[[case]]
+id = "romaji.small-a"
+dicts = ["basic"]
+[[case.step]]
+keys = "x a"
+text = "ぁ"
+
+[[case]]
+id = "romaji.small-ya"
+dicts = ["basic"]
+[[case.step]]
+keys = "x y a"
+text = "ゃ"
+
+[[case]]
+id = "romaji.small-tsu"
+dicts = ["basic"]
+[[case.step]]
+keys = "x t u"
+text = "っ"
+
+[[case]]
+id = "romaji.long-vowel"
+dicts = ["basic"]
+[[case.step]]
+keys = "r a - m e n n"
+text = "らーめん"
+
+[[case]]
+id = "romaji.youon"
+dicts = ["basic"]
+[[case.step]]
+keys = "k y a s h a c h a j a"
+text = "きゃしゃちゃじゃ"
+
+[[case]]
+id = "romaji.kutouten"
+dicts = ["basic"]
+[[case.step]]
+keys = "a , i ."
+text = "あ、い。"
+
+[[case]]
+id = "romaji.pending-prefix"
+dicts = ["basic"]
+[[case.step]]
+keys = "k"
+text = ""
+preedit = "k"
+
+[[case]]
+id = "romaji.bs-deletes-prefix"
+dicts = ["basic"]
+[[case.step]]
+keys = "k BS"
+text = ""
+preedit = ""
+
+[[case]]
+id = "romaji.bs-deletes-kana"
+dicts = ["basic"]
+[[case.step]]
+keys = "a i BS"
+text = "あ"
+preedit = ""
+
+[[case]]
+id = "romaji.katakana-mode"
+dicts = ["basic"]
+[[case.step]]
+keys = "q k a t a k a n a"
+text = "カタカナ"
+mode = "katakana"
+
+[[case]]
+id = "romaji.space"
+dicts = ["basic"]
+[[case.step]]
+keys = "a SPC i"
+text = "あ い"
+
+[[case]]
+id = "romaji.ret"
+dicts = ["basic"]
+[[case.step]]
+keys = "a RET"
+text = "あ\n"
+preedit = ""
