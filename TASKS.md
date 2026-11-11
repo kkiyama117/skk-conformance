@@ -309,7 +309,7 @@ Must fail without: the comparison of observations → `test_pass_and_fail_counts
 
 ## C9. Pull-request and main-branch CI
 
-- Needs: C1's committed implementation. The validator and its tests must be present before this card runs. C2 and the engine adapters are not needed.
+- Needs: C1's committed implementation on `origin/card/C1`. Create the C9 implementation worktree from that branch, with `runner/` and its tests already present. C1 does not have to be merged into main first. C9's implementation PR targets `card/C1`, not main; its diff adds only the workflow file listed below. C1 files are inherited from the PR base, not added by C9. C2 and the engine adapters are not needed.
 - Spec: `SPEC.md` section 8; `Makefile`; `../CLAUDE.md` sections GitHub and merge criteria; issue https://github.com/kkiyama117/kskk/issues/4.
 - Files: `.github/workflows/check.yml` only. The worker may create the missing `.github/workflows/` directories. No Python code, dependency files, Makefile changes, or test fixtures belong to this card.
 - The C9 number leaves C3-C8 available for the planned engine adapters. This card is a draft until its own ambiguity review and dispatch approval.
@@ -342,10 +342,10 @@ The following are separate acceptance checks by the lead or manager, not new Pyt
 | `ci_action_pins` | Both uses values contain exactly the full SHAs specified above, with the stated version comments. |
 | `ci_readonly_token` | Workflow permissions are exactly contents read and there is no job-level override. |
 | `ci_no_persisted_credentials` | Checkout explicitly sets persist-credentials false and adds no credential input. |
-| `ci_pr_merge` | Checkout has no ref override. On the C9 pull request, the manager records both the PR head SHA receiving the check and the merge-result SHA actually checked out. |
+| `ci_pr_merge` | Checkout has no ref override. C9's PR base is `card/C1`. Record the PR head SHA receiving the check and the tested SHA of that head merged into `card/C1`; the tested tree contains C1's runner and C9's workflow. |
 | `ci_python_version` | The native Python version step prints `Python 3.15.2`. A YAML field alone does not prove the installed version. |
-| `ci_pr_gate` | On a pull request event, the native Run gate step runs the full make check on the merge result and succeeds. Record the run URL, PR head SHA, and tested merge SHA. |
-| `ci_main_push_gate` | After merge to main, the native push run executes the same check job and full gate. Record the run URL and commit before marking C9 done. |
+| `ci_pr_gate` | Before C9 merges into `card/C1`, its own pull_request workflow runs the full make check on the merge result into `card/C1` and succeeds. Record the run URL, PR head SHA, base branch, and tested merge SHA. This is not a main-based workflow-only tree without runner. |
+| `ci_main_push_gate` | First C9 merges into `card/C1`. Later C1 PR #2, now containing the workflow, passes CI and merges into main. Only that main push supplies this check: the native push run executes the same full gate. Record its run URL and main commit before marking C9 done. A push to card/C1 is not this evidence and needs no added workflow trigger. |
 
 Must fail without: the explicit read-only permissions declaration → `ci_readonly_token`.
 
@@ -353,4 +353,4 @@ Must fail without: disabling persisted checkout credentials → `ci_no_persisted
 
 These two guard-removal checks are assertions on the workflow artifact, not unittest runs. The lead removes each declaration in turn, confirms that its acceptance assertion no longer holds, and restores the file exactly before any native CI run. Never run a deliberately weakened workflow on GitHub. Report these checks separately from test counts.
 
-- Done: local `make check` exits 0; the artifact checks hold; the manager confirms the native PR gate on the intended head's merge result; security review and manager review precede the PR. The main-push check and inclusion in origin/main are required before Status: done. Do not push, open a PR, merge, or mark done as a worker.
+- Done for the stacked C9 PR: local `make check` exits 0 on the C1-based worktree, the artifact checks hold, and the native PR gate passes on C9's merge result into `card/C1`; security review and manager review precede that PR. The later main-push check after C1 PR #2 merges, and inclusion in origin/main, are required before Status: done. This order grants no CI bypass and no changes outside C9's Files line. Do not push, open a PR, merge, or mark done as a worker.
