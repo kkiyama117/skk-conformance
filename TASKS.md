@@ -12,6 +12,8 @@ Common rules for every card in this file:
 
 ## C1. Case and dictionary validator
 
+Status: done
+
 - Needs: none.
 - Spec: `SPEC.md` sections 3 and 4; ADR `../docs/adr/0003-conformance-case-format.md`.
 - Files: `runner/__init__.py`, `runner/cases.py`, `runner/validate.py`, `runner/test_cases.py`, `runner/test_validate.py`, `testdata/validate/` (any files under it).
@@ -308,6 +310,8 @@ Must fail without: the comparison of observations → `test_pass_and_fail_counts
 - Done: `make check` exits 0.
 
 ## C9. Pull-request and main-branch CI
+
+Status: done
 
 - Needs: C1's committed implementation on `origin/card/C1`. Create the C9 implementation worktree from that branch, with `runner/` and its tests already present. C1 does not have to be merged into main first. C9's implementation PR targets `card/C1`, not main; its diff adds only the workflow file listed below. C1 files are inherited from the PR base, not added by C9. C2 and the engine adapters are not needed.
 - Spec: `SPEC.md` section 8; `Makefile`; `../CLAUDE.md` sections GitHub and merge criteria; issue https://github.com/kkiyama117/kskk/issues/4.
