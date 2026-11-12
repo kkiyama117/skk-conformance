@@ -333,6 +333,7 @@ Must fail without: cleanup after an invalid initial hello → `test_hello_mismat
 
 - R2.3: The method of any extra test observation of child reaping beyond the specified fake EOF marker. This is a test-construction choice, not permission to weaken the existing `Adapter.close` contract or the cleanup guard. Choose the simplest reading consistent with those rules and name it in the report.
 - R2.4: How the cwd test fixtures additionally observe that argv elements are not rewritten. SPEC 6 already defines the production behavior. Choose the simplest fixture/assertion consistent with it and name the reading in the report; no extra production interface is requested.
+- R3.1: What engine mark, runner exit behavior, and continuation apply when command, available, or build argv cannot be executed at all (missing executable, permission denied, or an empty available/build array). Choose the simplest reading consistent with the remaining rules and name the chosen behavior in the report.
 
 - Done: `make check` exits 0.
 
