@@ -216,9 +216,9 @@ Steps:
 1. `load_cases`. If there are problems, print them as `runner.validate` does and exit 2.
 2. Read the engines file with `tomllib`. Each `[engine.<name>]` table may have only `command` (required, non-empty array of strings), `build`, and `available` (arrays of strings). Anything else, or a file that does not parse, prints `engines: <name or -> : engines-key` and exits 2.
 3. For each selected engine, in order:
-   1. If `available` is given, run it with `cwd` = the engines file's directory, stdout and stderr discarded. A nonzero exit marks the engine `n/a`; skip to the next engine.
-   2. If `build` is given, run it the same way, with its output appended to `<logs>/<name>.build.log`. A nonzero exit marks the engine `build-failed`; skip to the next engine.
-   3. Start an `Adapter` with `command`, `cwd` = the engines file's directory, and `stderr_path` = `<logs>/<name>.stderr.log`. The hello answer must have `type` `"hello"`, `protocol` `1`, and `engine` equal to `<name>`; otherwise mark the engine `hello-failed` and skip it. Keep `version` (a string; `"unknown"` if missing).
+   1. If `available` is given, execute its argv using the working-directory rule in SPEC 6, with stdout and stderr discarded. A nonzero exit marks the engine `n/a`; skip to the next engine.
+   2. If `build` is given, execute its argv using SPEC 6, with its output appended to `<logs>/<name>.build.log`. A nonzero exit marks the engine `build-failed`; skip to the next engine.
+   3. Start an `Adapter` with `command`, `cwd` from SPEC 6, and `stderr_path` = `<logs>/<name>.stderr.log`. The hello answer must have `type` `"hello"`, `protocol` `1`, and `engine` equal to `<name>`. An invalid hello answer, `AdapterTimeout`, or `AdapterBroken` from `start()` marks this engine `hello-failed`, with no version and no case results. On every such initial failure call `close()` to close stdin and reap the process, then continue with the next engine. `close()` also handles an already exited process and returns its status. Keep `version` from a valid hello answer (a string; `"unknown"` if missing).
    4. For each case, in `load_cases` order: make a new `tempfile.TemporaryDirectory()`; write `user.jisyo` in it, either the two marker lines of SPEC section 4 (`";; okuri-ari entries.\n;; okuri-nasi entries.\n"`) or a byte copy of `dict/<user_dict>.jisyo`; send the request of SPEC 5.2 with `dicts` as absolute paths of `dict/<name>.jisyo` and `"encoding": "utf-8"`; classify the answer (below); remove the directory.
    5. After the last case, `close()` the adapter.
 4. Print the table (below) to stdout. With `--details`, print the details after it. With `--json`, write the JSON file.
@@ -246,7 +246,7 @@ The table, exactly (one row per case file in load order, labelled with its `[gro
 
 A cell is `<passed>/<total>` for that file, or the engine's mark (`n/a`, `build-failed`, `hello-failed`) in every row. `total` sums all files.
 
-Details (`--details`): for each engine that ran, a line `## <name>`, then one line per case that did not pass, in case order: `- <id>: fail step <n> <field> expected <json> got <json>` (the two values as `json.dumps(..., ensure_ascii=False)`; this is the one place the runner prints case text), `- <id>: error <code>`, or `- <id>: timeout`.
+Details (`--details`): for each engine that ran, a line `## <name>`, then one line per case that did not pass, in case order: `- <id>: fail step <n> <field> expected <json> got <json>` (the two values as `json.dumps(..., ensure_ascii=False)`; this permits case values on stdout only with `--details`), `- <id>: error <code>`, or `- <id>: timeout`.
 
 JSON (`--json`):
 
@@ -260,12 +260,16 @@ JSON (`--json`):
 
 `mark` is `ran`, `n/a`, `build-failed`, or `hello-failed`; an engine that did not run has no `version` and an empty `cases`. Engines appear in run order, cases in case order. Write with `ensure_ascii=False`, `indent=1`.
 
+The JSON example's `expected` and `actual` fields are included only when `--details` is also present. With `--json` alone a fail record contains exactly `status`, `step`, and `field`, with no case values; pass/error/timeout records remain as described. No `keys`, `text`, `preedit`, candidate, or dictionary content is copied elsewhere into the JSON. `--details` is the explicit opt-in for case values both in stdout's details lines and in the JSON expected/actual fields. The JSON file may still be requested without that opt-in and then contains metadata only.
+
 ### `testdata/fake_adapter.py`
 
 A Python script, `python3 testdata/fake_adapter.py <script.json>`. The script file is an object with:
 
 - `"engine"`, `"version"`: the hello answer's values. `"protocol"` (optional, default 1).
 - `"record"` (optional): a path; the fake appends every request line it reads to it, as read.
+- `"exit_record"` (optional): a path; only on clean end of stdin, append exactly `"closed\n"` and then exit 0. An explicit exit behavior, a crash, or being killed does not write this marker. This makes the runner's graceful end-of-run close observable without inspecting private process state.
+- `"hello_behavior"` (optional): without it, answer hello using the fields above. `{"sleep": <seconds>}` delays that normal hello, `{"exit": <status>}` exits before answering, and `{"raw": "<line>"}` writes that raw hello line. After a sleep/raw hello, proceed to the case loop as usual.
 - `"cases"`: an object from case id to one behavior:
   - `{"steps": [...]}`: answer `type` result with these steps.
   - `{"error": {...}}`: answer with this error.
@@ -293,19 +297,37 @@ Each test writes its own case files, dictionaries, engines file, and fake script
 | `test_crash_restarts_adapter` | `exit` 3 for case 1: `error` `broken`; case 2 passes. |
 | `test_unavailable_engine` | `available = ["false"]`: every row is `n/a`, the fake's `record` file is never created. |
 | `test_build_failed_engine` | `build = ["false"]`: every row is `build-failed`. |
-| `test_hello_mismatch` | The fake's `engine` differs from the table name: `hello-failed`, no case requests recorded. |
+| `test_hello_mismatch` | The fake's `engine` differs from the table name: `hello-failed`, no version and empty case results, no case requests recorded. |
+| `test_hello_mismatch_closes_adapter` | Wrong hello engine, with exit_record in the temporary directory. After run.main returns, that marker is exactly `"closed\n"`; no case request was sent. Assert the marker rather than a private close call. |
+| `test_hello_timeout_continues` | Engine a has hello_behavior sleep 3; shorten only the test's hello wait to 1 second by wrapping the public Adapter.request, leaving the actual subprocess and transport active. Engine a is hello-failed with no version and empty cases, and a second valid engine b runs and passes. Do not assert private call order. |
+| `test_hello_broken_continues` | Engine a has hello_behavior exit 3 before a hello answer. It is hello-failed with no version and empty cases, and valid engine b runs and passes. |
 | `test_request_shape` | `record` holds, after hello, exactly the SPEC 5.2 request for a case with `dicts = ["a", "b"]`: absolute paths in that order, `encoding` `utf-8`, `user_dict.path` ending in `user.jisyo`, and `keys` split into tokens. |
 | `test_user_dict_starts_with_markers` | `user_dict_text`: the step's `text` is `";; okuri-ari entries.\n;; okuri-nasi entries.\n"` and the case expecting that passes. |
 | `test_user_dict_copied_from_dict` | A case with `user_dict = "u"`: the JSON string `text` equals the contents of the temporary fixture `dict/u.jisyo` decoded as UTF-8, without newline translation. Compare strings, not a string with bytes. |
 | `test_user_dict_is_fresh_per_case` | Two cases with `append_user_dict`: the second case's `text` holds only its own line after the markers. |
 | `test_table_format` | Two files, two engines (one `n/a`): stdout is exactly the expected table string, columns labelled `<name> <version>` and `<name>`. |
 | `test_details_lines` | One fail, one error, one timeout: the details lines are exactly as specified. |
-| `test_json_output` | The JSON file parses and equals the expected object for one pass and one fail. |
+| `test_json_output` | Run with --json and without --details, for one pass and one fail. Assert the complete parsed object; the fail has status, step, and field only, not expected/actual. |
+| `test_json_without_details_omits_case_text` | A distinct valid key sequence using SPEC 3.4 tokens, plus synthetic unique strings in expected text/preedit and the fake's differing text/preedit: --json without --details writes none of those strings anywhere in the output JSON, and no expected/actual fields. Assert against the fixed fixture strings, not a second result of the implementation. |
+| `test_json_with_details_includes_values` | --json plus --details for one pass and one fail: the complete parsed object includes the exact synthetic expected/actual values for the fail, matching the written rule. |
 | `test_case_problems_exit_2` | A case file with a `mode-value` problem: exit status 2 and the problem line on stdout. |
 | `test_engine_selection_order` | `--engine b --engine a`: the columns are `b` then `a`. Unknown `--engine c` exits 2. |
-| `test_adapter_closed_at_end` | After the run, the fake process has exited with status 0 (record a marker line on exit in the fake, or check `close()` returns 0). |
+| `test_adapter_closed_at_end` | Call run.main on a successful fake run with exit_record in the temporary directory. After it returns, the marker is exactly `"closed\n"`, observing the fake's clean EOF path at the end of the runner's case loop. Do not replace this with a direct Adapter.close test or an assertion on a private call. |
+| `test_command_cwd` | A temporary engines file lives in a separate config directory with fake_adapter.py and script.json referenced by relative paths in command. The command runs successfully and its case passes using SPEC 6's cwd; none of those files is put at the repository root. |
+| `test_available_cwd` | In that separate config directory, available uses a synthetic helper that exits 0 only if cwd.marker is present in its cwd. The marker exists only in the config directory. The engine runs and passes instead of becoming n/a. |
+| `test_build_cwd` | Independently, build uses such a helper and marker in the engines-file directory. The engine runs and passes instead of becoming build-failed. |
 
-Must fail without: the comparison of observations → `test_pass_and_fail_counts`; the restart after a timeout → `test_timeout_restarts_adapter`; the fresh user dictionary per case → `test_user_dict_is_fresh_per_case`.
+Must fail without: the comparison of observations → `test_pass_and_fail_counts`.
+
+Must fail without: the restart after a timeout → `test_timeout_restarts_adapter`.
+
+Must fail without: the fresh user dictionary per case → `test_user_dict_is_fresh_per_case`.
+
+Must fail without: withholding JSON case values without --details → `test_json_without_details_omits_case_text`.
+
+Must fail without: graceful close after the case loop → `test_adapter_closed_at_end`.
+
+Must fail without: cleanup after an invalid initial hello → `test_hello_mismatch_closes_adapter`.
 
 - Done: `make check` exits 0.
 

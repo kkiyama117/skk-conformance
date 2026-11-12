@@ -229,9 +229,11 @@ command = ["adapters/libskk/build/adapter"]
 
 | Key | Required | Meaning |
 |---|---|---|
-| `command` | yes | argv of the adapter, relative to the repository root. |
-| `build` | no | argv that builds the adapter, run once before the first use. |
-| `available` | no | argv that exits 0 only when the engine can run on this machine (for example, a container image exists). Without it the engine is always available. |
+| `command` | yes | argv of the adapter, executed with the working directory defined below. |
+| `build` | no | argv that builds the adapter, run once before the first use with the same working directory. |
+| `available` | no | argv that exits 0 only when the engine can run on this machine (for example, a container image exists), with the same working directory. Without it the engine is always available. |
+
+For all three commands, `cwd` is the parent directory of the resolved engines file, including a custom `--engines` file. Resolve a relative engines-file argument from the caller's current directory first. Do not rewrite argv elements. Relative filesystem paths used by the process are relative to that `cwd`; a bare executable name such as `python3` uses the normal PATH lookup. Absolute paths are unchanged. The default engines file is at the repository root, so its commands keep that root as `cwd`.
 
 ## 7. The runner
 
