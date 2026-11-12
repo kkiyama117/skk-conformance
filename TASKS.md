@@ -196,7 +196,7 @@ class Adapter:
 
 - The process runs with `cwd`, stdin and stdout as pipes in UTF-8, and stderr appended to `stderr_path`.
 - `request` writes `json.dumps(obj, ensure_ascii=False)` plus `\n`, flushes, and waits for one line on stdout. No full line within `timeout` seconds raises `AdapterTimeout`. End of stdout, or a line that `json.loads` rejects or that is not an object, raises `AdapterBroken`. Use a reader thread and a `queue.Queue`, or `selectors`; either is fine.
-- `start` sends `{"type": "hello", "protocol": 1}` with a 30 s timeout and returns the answer as is.
+- `start` starts the process, then sends hello through the public `self.request({"type": "hello", "protocol": 1}, timeout=30.0)` and returns its answer as is. It does not implement a separate inline hello transport. This allows a test to wrap public `Adapter.request` to shorten only the hello wait while exercising the real process and transport; tests do not assert private call order.
 
 ### `runner/run.py`
 
@@ -283,7 +283,7 @@ A Python script, `python3 testdata/fake_adapter.py <script.json>`. The script fi
 
 ### Tests (`runner/test_run.py`)
 
-Each test writes its own case files, dictionaries, engines file, and fake script into a temporary directory and calls `run.main([...])` (define `main(argv: list[str]) -> int` in `runner/run.py`; it prints to `sys.stdout`) or runs `python3 -m runner.run`. Use `--timeout 1` unless the test says otherwise.
+Each test writes its own case files, dictionaries, engines file, and fake script into a temporary directory and calls `run.main([...])` (define `main(argv: list[str]) -> int` in `runner/run.py`; it prints to `sys.stdout`) or runs `python3 -m runner.run`. Every invocation passes `--logs` with an absolute path inside that test's `TemporaryDirectory`; it must not create the production default `build/logs` in the repository. Any `--json` output, fake record/exit_record, stderr_path, and probe-helper output also stays inside that temporary directory. This does not change the CLI defaults for non-test use. Use `--timeout 1` unless the test says otherwise.
 
 | Test | Assert |
 |---|---|
@@ -308,7 +308,7 @@ Each test writes its own case files, dictionaries, engines file, and fake script
 | `test_table_format` | Two files, two engines (one `n/a`): stdout is exactly the expected table string, columns labelled `<name> <version>` and `<name>`. |
 | `test_details_lines` | One fail, one error, one timeout: the details lines are exactly as specified. |
 | `test_json_output` | Run with --json and without --details, for one pass and one fail. Assert the complete parsed object; the fail has status, step, and field only, not expected/actual. |
-| `test_json_without_details_omits_case_text` | A distinct valid key sequence using SPEC 3.4 tokens, plus synthetic unique strings in expected text/preedit and the fake's differing text/preedit: --json without --details writes none of those strings anywhere in the output JSON, and no expected/actual fields. Assert against the fixed fixture strings, not a second result of the implementation. |
+| `test_json_without_details_omits_case_text` | Use a fixed valid token list such as ["K", "e", "y"] and unique synthetic expected/actual text and preedit. For --json without --details, compare the complete parsed output with the literal metadata-only expected object. Also assert recursively that no object has a keys member and no array equals the fixture's key-token list under any name; expected/actual members and the unique text/preedit values are absent. Do not require each one-character token to be absent as a substring of serialized JSON: metadata words can contain those characters. Do not derive the expected object or fixture values from the implementation. |
 | `test_json_with_details_includes_values` | --json plus --details for one pass and one fail: the complete parsed object includes the exact synthetic expected/actual values for the fail, matching the written rule. |
 | `test_case_problems_exit_2` | A case file with a `mode-value` problem: exit status 2 and the problem line on stdout. |
 | `test_engine_selection_order` | `--engine b --engine a`: the columns are `b` then `a`. Unknown `--engine c` exits 2. |
@@ -328,6 +328,11 @@ Must fail without: withholding JSON case values without --details → `test_json
 Must fail without: graceful close after the case loop → `test_adapter_closed_at_end`.
 
 Must fail without: cleanup after an invalid initial hello → `test_hello_mismatch_closes_adapter`.
+
+### Open
+
+- R2.3: The method of any extra test observation of child reaping beyond the specified fake EOF marker. This is a test-construction choice, not permission to weaken the existing `Adapter.close` contract or the cleanup guard. Choose the simplest reading consistent with those rules and name it in the report.
+- R2.4: How the cwd test fixtures additionally observe that argv elements are not rewritten. SPEC 6 already defines the production behavior. Choose the simplest fixture/assertion consistent with it and name the reading in the report; no extra production interface is requested.
 
 - Done: `make check` exits 0.
 
